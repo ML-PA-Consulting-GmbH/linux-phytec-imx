@@ -257,6 +257,8 @@ dtb-$(CONFIG_ARCH_MXC) += imx8mp-evk-revb4-rpmsg.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-evk-revb4-rpmsg-lpv.dtb
 
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-libra-rdk-fpsc.dtb
+imx8mp-libra-rdk-fpsc-lvds-dtbs += imx8mp-libra-rdk-fpsc.dtb imx8mp-libra-rdk-fpsc-lvds-etml1010g3dra.dtbo
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-libra-rdk-fpsc-lvds.dtb
 
 dtb-$(CONFIG_ARCH_MXC) += imx8mq-evk.dtb imx8mq-evk-rpmsg.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mq-evk.dtb imx8mq-evk-rpmsg.dtb imx8mq-evk-pcie1-m2.dtb imx8mq-evk-usd-wifi.dtb \
