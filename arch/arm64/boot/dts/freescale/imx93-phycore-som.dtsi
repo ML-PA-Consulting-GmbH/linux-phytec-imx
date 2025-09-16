@@ -199,6 +199,13 @@
 	};
 };
 
+/* Frequency scaling */
+&lpm {
+	soc-supply = <&buck1>;
+	ld-mode-enabled;
+	status = "okay";
+};
+
 /* eMMC */
 &usdhc1 {
 	pinctrl-names = "default", "state_100mhz", "state_200mhz";
