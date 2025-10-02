@@ -140,6 +140,7 @@ struct dp83822_private {
 	u16 fx_sd_enable;
 	u8 cfg_dac_minus;
 	u8 cfg_dac_plus;
+	int leds_polarity;
 	struct ethtool_wolinfo wol;
 };
 
@@ -409,6 +410,17 @@ static int dp8382x_config_init(struct phy_device *phydev)
 {
 	struct dp83822_private *dp83822 = phydev->priv;
 
+	if (dp83822->leds_polarity >= 0) {
+		/* Set LED_2_Polarity and LED_Link_Polarity */
+		phy_modify_mmd(phydev, DP83822_DEVADDR, 0x469,
+			       BIT(6), dp83822->leds_polarity ? BIT(6) : 0);
+		phy_modify_mmd(phydev, DP83822_DEVADDR, 0x18,
+			       BIT(7), dp83822->leds_polarity ? BIT(7) : 0);
+
+		phydev_dbg(phydev, "LEDs polarity set to %s\n",
+			   dp83822->leds_polarity ? "active-high" : "active-low");
+	}
+
 	return dp83822_config_wol(phydev, &dp83822->wol);
 }
 
@@ -605,6 +617,17 @@ static int dp83822_phy_reset(struct phy_device *phydev)
 }
 
 #ifdef CONFIG_OF_MDIO
+static void dp8382x_of_init(struct phy_device *phydev)
+{
+	struct dp83822_private *dp83822 = phydev->priv;
+	struct device *dev = &phydev->mdio.dev;
+	u32 val;
+
+	dp83822->leds_polarity = -1;
+	if (!device_property_read_u32(dev, "ti,leds-polarity", &val))
+		dp83822->leds_polarity =  val ? 1 : 0;
+}
+
 static int dp83822_of_init(struct phy_device *phydev)
 {
 	struct dp83822_private *dp83822 = phydev->priv;
@@ -653,6 +676,11 @@ static void dp83826_of_init(struct phy_device *phydev)
 		dp83822->cfg_dac_plus += dp83826_to_dac_plus_one_regval(val);
 }
 #else
+static int dp8382x_of_init(struct phy_device *phydev)
+{
+	return 0;
+}
+
 static int dp83822_of_init(struct phy_device *phydev)
 {
 	return 0;
@@ -700,6 +728,8 @@ static int dp8382x_probe(struct phy_device *phydev)
 		return -ENOMEM;
 
 	phydev->priv = dp83822;
+
+	dp8382x_of_init(phydev);
 
 	return 0;
 }
