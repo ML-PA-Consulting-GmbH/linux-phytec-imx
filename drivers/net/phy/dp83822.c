@@ -718,6 +718,42 @@ static int dp83822_read_straps(struct phy_device *phydev)
 	return 0;
 }
 
+static int dp8382x_phy_fixup(struct phy_device *phydev)
+{
+	int pid;
+
+	/* Read PHYIDR2 for model number */
+	pid = phy_read_mmd(phydev, DP83822_DEVADDR, 0x3);
+
+	/* DP83825I fixup */
+	if (((pid >> 4) & 0x3F) == 0x14) {
+		/* AutoNeg enable */
+		phy_set_bits_mmd(phydev, DP83822_DEVADDR, 0x0, BIT(12));
+		/* CRS_DV: enable */
+		phy_clear_bits_mmd(phydev, DP83822_DEVADDR, 0x302, BIT(8));
+		/* LED_2_Polarity: active low */
+		phy_clear_bits_mmd(phydev, DP83822_DEVADDR, 0x469, BIT(6));
+		/* LED_2_Control: RX/TX act */
+		phy_clear_bits_mmd(phydev, DP83822_DEVADDR, 0x460, GENMASK(7, 4));
+		phy_set_bits_mmd(phydev, DP83822_DEVADDR, 0x460, BIT(4));
+		/* LED_0_Configuration: Link OK, cfg_mled_en: LED_0 */
+		phy_clear_bits_mmd(phydev, DP83822_DEVADDR, 0x25, GENMASK(6, 3));
+		phy_set_bits_mmd(phydev, DP83822_DEVADDR, 0x25, BIT(0));
+		/* LED_Link_Polarity : active low */
+		phy_clear_bits_mmd(phydev, DP83822_DEVADDR, 0x18, BIT(7));
+	}
+
+	/* DP83826I fixup */
+	if (((pid >> 4) & 0x3F) == 0x11) {
+		/* Swap LEDs configuration */
+		phy_clear_bits_mmd(phydev, DP83822_DEVADDR, 0x460, GENMASK(3, 0));
+		phy_set_bits_mmd(phydev, DP83822_DEVADDR, 0x460, BIT(0));
+		phy_clear_bits_mmd(phydev, DP83822_DEVADDR, 0x25, GENMASK(6, 3));
+	}
+
+	return 0;
+}
+
 static int dp8382x_probe(struct phy_device *phydev)
 {
 	struct dp83822_private *dp83822;
@@ -731,6 +767,10 @@ static int dp8382x_probe(struct phy_device *phydev)
 
 	dp8382x_of_init(phydev);
 
+	if (of_machine_is_compatible("phytec,imx91-phycore-som") ||
+	    of_machine_is_compatible("phytec,imx93-phycore-som"))
+		phy_register_fixup_for_uid(DP83822_PHY_ID, 0xffff0000,
+					   dp8382x_phy_fixup);
 	return 0;
 }
 
