@@ -405,6 +405,13 @@ static int dp83822_read_status(struct phy_device *phydev)
 	return 0;
 }
 
+static int dp8382x_config_init(struct phy_device *phydev)
+{
+	struct dp83822_private *dp83822 = phydev->priv;
+
+	return dp83822_config_wol(phydev, &dp83822->wol);
+}
+
 static int dp83822_config_init(struct phy_device *phydev)
 {
 	struct dp83822_private *dp83822 = phydev->priv;
@@ -503,7 +510,8 @@ static int dp83822_config_init(struct phy_device *phydev)
 				return err;
 		}
 	}
-	return dp83822_config_wol(phydev, &dp83822->wol);
+
+	return dp8382x_config_init(phydev);
 }
 
 static int dp83826_config_rmii_mode(struct phy_device *phydev)
@@ -582,14 +590,7 @@ static int dp83826_config_init(struct phy_device *phydev)
 			return ret;
 	}
 
-	return dp83822_config_wol(phydev, &dp83822->wol);
-}
-
-static int dp8382x_config_init(struct phy_device *phydev)
-{
-	struct dp83822_private *dp83822 = phydev->priv;
-
-	return dp83822_config_wol(phydev, &dp83822->wol);
+	return dp8382x_config_init(phydev);
 }
 
 static int dp83822_phy_reset(struct phy_device *phydev)
