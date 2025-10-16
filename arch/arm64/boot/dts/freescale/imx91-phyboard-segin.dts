@@ -106,6 +106,10 @@
 };
 
 /* Ethernet */
+&ethphy1 {
+	ti,leds-polarity = <0>;
+};
+
 &eqos {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_eqos>;
