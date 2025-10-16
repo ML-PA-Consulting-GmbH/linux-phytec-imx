@@ -13,6 +13,7 @@
 #include <linux/platform_device.h>
 #include <linux/nvmem-consumer.h>
 #include <linux/thermal.h>
+#include "thermal_hwmon.h"
 
 #define CTRL0			0x0
 
@@ -175,6 +176,8 @@ static int imx91_tmu_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to register thermal zone sensor: %d\n", ret);
 		return ret;
 	}
+
+	devm_thermal_add_hwmon_sysfs(&pdev->dev, tmu->sensors.tzd);
 	platform_set_drvdata(pdev, tmu);
 
 	ret = clk_prepare_enable(tmu->clk);
