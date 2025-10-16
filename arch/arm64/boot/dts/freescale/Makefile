@@ -576,6 +576,7 @@ dtb-$(CONFIG_ARCH_MXC) += imx91-9x9-qsb-ld.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx91-9x9-qsb-i2c-spi-slave.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx91-9x9-qsb-i3c.dtb
 
+dtb-$(CONFIG_ARCH_MXC) += imx91-phyboard-segin.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx93-phyboard-nash.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx93-phyboard-segin.dtb
 
