@@ -398,6 +398,7 @@
 				clock-names = "bus", "mclk0", "mclk1", "mclk2", "mclk3";
 				dmas = <&edma1 22 0 1>, <&edma1 21 0 0>;
 				dma-names = "rx", "tx";
+				#sound-dai-cells = <0>;
 				status = "disabled";
 			};
 
@@ -823,6 +824,7 @@
 				clock-names = "bus", "mclk0", "mclk1", "mclk2", "mclk3";
 				dmas = <&edma2 59 0 1>, <&edma2 58 0 0>;
 				dma-names = "rx", "tx";
+				#sound-dai-cells = <0>;
 				status = "disabled";
 			};
 
@@ -836,6 +838,7 @@
 				clock-names = "bus", "mclk0", "mclk1", "mclk2", "mclk3";
 				dmas = <&edma2 61 0 1>, <&edma2 60 0 0>;
 				dma-names = "rx", "tx";
+				#sound-dai-cells = <0>;
 				status = "disabled";
 			};
 
