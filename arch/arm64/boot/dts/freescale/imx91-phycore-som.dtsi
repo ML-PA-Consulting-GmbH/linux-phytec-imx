@@ -221,6 +221,11 @@
 	status = "okay";
 };
 
+/* TMU */
+&tempsense0 {
+	status = "okay";
+};
+
 &iomuxc {
 	pinctrl_fec: fecgrp {
 		fsl,pins = <
