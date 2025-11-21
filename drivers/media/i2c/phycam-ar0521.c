@@ -2728,26 +2728,14 @@ static int ar0521_create_ctrls(struct ar0521 *sensor)
 	return 0;
 }
 
-static void ar0521_set_defaults(struct ar0521 *sensor)
+static int ar0521_init_state(struct v4l2_subdev *sd, struct v4l2_subdev_state *state)
 {
-	struct v4l2_subdev_state *state;
+	struct ar0521 *sensor = to_ar0521(sd);
 	struct v4l2_mbus_framefmt *fmt;
 	struct v4l2_rect *crop;
 
-	state = v4l2_subdev_lock_and_get_active_state(&sensor->subdev);
 	fmt = v4l2_subdev_state_get_format(state, 0);
 	crop = v4l2_subdev_state_get_crop(state, 0);
-
-	sensor->limits = (struct ar0521_sensor_limits) {
-					/* mim		max      */
-		.x			= {0,		2603     },
-		.y			= {0,		1955     },
-		.hlen			= {3080,	65532    },
-		.vlen			= {48,		65535    },
-		.hblank			= {240,		65535    },
-		.vblank			= {28,		65535    },
-		.ext_clk		= {5000000,	64000000 },
-	};
 
 	crop->left = 4;
 	crop->top = 4;
@@ -2758,35 +2746,38 @@ static void ar0521_set_defaults(struct ar0521 *sensor)
 	fmt->height = AR0521_DEF_HEIGHT;
 	fmt->field = V4L2_FIELD_NONE;
 
-	if (sensor->model == AR0521_MODEL_MONOCHROME) {
-		sensor->formats = ar0521_mono_formats;
-		sensor->num_fmts = ARRAY_SIZE(ar0521_mono_formats);
+	if (sensor->model == AR0521_MODEL_MONOCHROME)
 		fmt->colorspace = V4L2_COLORSPACE_SRGB;
-	} else {
-		sensor->formats = ar0521_col_formats;
-		sensor->num_fmts = ARRAY_SIZE(ar0521_col_formats);
+	else
 		fmt->colorspace = V4L2_COLORSPACE_RAW;
-	}
 
 	fmt->code = sensor->formats[sensor->num_fmts - 1].code;
-	sensor->bpp = sensor->formats[sensor->num_fmts - 1].bpp;
 
-	sensor->w_skip = 1;
-	sensor->h_skip = 1;
-	sensor->hlen = sensor->limits.hlen.min;
-	sensor->vlen = fmt->height + sensor->limits.vblank.min;
-	sensor->gains.red = 1000;
-	sensor->gains.greenr = 1000;
-	sensor->gains.greenb = 1000;
-	sensor->gains.blue = 1000;
-	sensor->gains.min_ref = 1000;
+	return 0;
+}
+
+static int ar0521_subdev_registered(struct v4l2_subdev *sd)
+{
+	struct ar0521 *sensor = to_ar0521(sd);
+	int ret;
 
 #ifdef DEBUG
-	sensor->manual_pll = false;
+	ar0521_debugfs_init(sensor);
 #endif /* ifdef DEBUG */
 
-	v4l2_subdev_unlock_state(state);
+	ret = ar0521_create_ctrls(sensor);
+	if (ret)
+		return ret;
+
+	v4l2_ctrl_handler_setup(&sensor->ctrls);
+
+	return 0;
 }
+
+static const struct v4l2_subdev_internal_ops ar0521_subdev_internal_ops = {
+	.init_state		= ar0521_init_state,
+	.registered		= ar0521_subdev_registered,
+};
 
 static const struct ar0521_register sequencer[] = {
 	{ 0x3d00, 0x043e },
@@ -3024,33 +3015,51 @@ static int ar0521_init_sequencer(struct ar0521 *sensor)
 	return 0;
 }
 
-static int ar0521_subdev_registered(struct v4l2_subdev *sd)
+static int ar0521_init_sensor(struct ar0521 *sensor)
 {
-	struct ar0521 *sensor = to_ar0521(sd);
 	int ret;
 
-	ar0521_set_defaults(sensor);
+	sensor->limits = (struct ar0521_sensor_limits) {
+					/* mim		max      */
+		.x			= {0,		2603     },
+		.y			= {0,		1955     },
+		.hlen			= {3080,	65532    },
+		.vlen			= {48,		65535    },
+		.hblank			= {240,		65535    },
+		.vblank			= {28,		65535    },
+		.ext_clk		= {5000000,	64000000 },
+	};
+
+	if (sensor->model == AR0521_MODEL_MONOCHROME) {
+		sensor->formats = ar0521_mono_formats;
+		sensor->num_fmts = ARRAY_SIZE(ar0521_mono_formats);
+	} else {
+		sensor->formats = ar0521_col_formats;
+		sensor->num_fmts = ARRAY_SIZE(ar0521_col_formats);
+	}
+
+	sensor->bpp = sensor->formats[sensor->num_fmts - 1].bpp;
+
+	sensor->w_skip = 1;
+	sensor->h_skip = 1;
+	sensor->hlen = sensor->limits.hlen.min;
+	sensor->vlen = AR0521_DEF_HEIGHT + sensor->limits.vblank.min;
+	sensor->gains.red = 1000;
+	sensor->gains.greenr = 1000;
+	sensor->gains.greenb = 1000;
+	sensor->gains.blue = 1000;
+	sensor->gains.min_ref = 1000;
 
 #ifdef DEBUG
-	ar0521_debugfs_init(sensor);
+	sensor->manual_pll = false;
 #endif /* ifdef DEBUG */
 
 	ret = ar0521_init_sequencer(sensor);
 	if (ret)
 		return ret;
 
-	ret = ar0521_create_ctrls(sensor);
-	if (ret)
-		return ret;
-
-	v4l2_ctrl_handler_setup(&sensor->ctrls);
-
 	return 0;
 }
-
-static const struct v4l2_subdev_internal_ops ar0521_subdev_internal_ops = {
-	.registered		= ar0521_subdev_registered,
-};
 
 static int ar0521_check_chip_id(struct ar0521 *sensor)
 {
@@ -3410,21 +3419,25 @@ static int ar0521_probe(struct i2c_client *i2c)
 	if (ret)
 		goto out_media;
 
-	sd->state_lock = &sensor->lock;
-	ret = v4l2_subdev_init_finalize(sd);
+	ret = ar0521_check_chip_id(sensor);
+	if (ret)
+		goto out_media;
+
+	ret = ar0521_init_sensor(sensor);
 	if (ret)
 		goto out_media;
 
 	ret = v4l2_ctrl_handler_init(&sensor->ctrls, 10);
 	if (ret)
-		goto out_init;
+		goto out_media;
 
 	sensor->subdev.ctrl_handler = &sensor->ctrls;
 	sensor->ctrls.lock = &sensor->lock;
 
-	ret = ar0521_check_chip_id(sensor);
+	sd->state_lock = sensor->ctrls.lock;
+	ret = v4l2_subdev_init_finalize(sd);
 	if (ret)
-		goto out;
+		goto out_ctrl;
 
 	ret = v4l2_async_register_subdev_sensor(&sensor->subdev);
 	if (ret)
@@ -3433,9 +3446,9 @@ static int ar0521_probe(struct i2c_client *i2c)
 	return 0;
 
 out:
-	v4l2_ctrl_handler_free(&sensor->ctrls);
-out_init:
 	v4l2_subdev_cleanup(sd);
+out_ctrl:
+	v4l2_ctrl_handler_free(&sensor->ctrls);
 out_media:
 	media_entity_cleanup(&sd->entity);
 	mutex_destroy(&sensor->lock);
