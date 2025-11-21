@@ -1604,9 +1604,7 @@ static unsigned int ar0521_find_skipfactor(unsigned int input,
 	 * factor. If no exact match is found. the next bigger matching
 	 * factor is returned.
 	 * Supported factors are:
-	 * No Skip
-	 * Skip 2
-	 * Skip 4
+	 * No Skip, 2, 4
 	 */
 
 	for (i = 0; i < 2; i++)
