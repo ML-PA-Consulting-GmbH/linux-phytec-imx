@@ -706,8 +706,6 @@ static void ar0144_vv_querycap(struct ar0144 *sensor, void *args)
 	const char *csi_id;
 	int ret;
 
-	dev_dbg(dev, "%s\n", __func__);
-
 	ret = of_property_read_string(dev->of_node, "isp-bus-info", &csi_id);
 	if (!ret) {
 		strscpy((char *)cap->bus_info, csi_id, sizeof(cap->bus_info));
@@ -726,14 +724,11 @@ static void ar0144_vv_querycap(struct ar0144 *sensor, void *args)
 
 static int ar0144_vv_querymode(struct ar0144 *sensor, void *args)
 {
-	struct device *dev = sensor->subdev.dev;
 	struct vvcam_mode_info_s *modes;
 	struct vvcam_mode_info_array_s *array =
 		(struct vvcam_mode_info_array_s *) args;
 	uint32_t count;
 	int ret;
-
-	dev_dbg(dev, "%s\n", __func__);
 
 	switch (sensor->model->chip) {
 	case AR0144:
@@ -772,7 +767,6 @@ static int ar0144_vv_get_sensormode(struct ar0144 *sensor, void *args)
 	int index;
 	int ret;
 
-	dev_dbg(dev, "%s\n", __func__);
 	dev_dbg(dev, "%s index: %u\n", __func__, sensor->vvcam_cur_mode_index);
 
 	ret = copy_from_user(&min_fps_allowed, &mode->ae_info.min_fps,
@@ -824,7 +818,6 @@ static int ar0144_vv_get_sensormode(struct ar0144 *sensor, void *args)
 
 static int ar0144_vv_set_sensormode(struct ar0144 *sensor, void *args)
 {
-	struct device *dev = sensor->subdev.dev;
 	struct v4l2_subdev *sd = &sensor->subdev;
 	struct v4l2_subdev_state *state;
 	struct v4l2_subdev_selection sel;
@@ -844,8 +837,6 @@ static int ar0144_vv_set_sensormode(struct ar0144 *sensor, void *args)
 	uint32_t index;
 	int bpp;
 	int ret;
-
-	dev_dbg(dev, "%s\n", __func__);
 
 	ret = copy_from_user(&mode, args, sizeof(struct vvcam_mode_info_s));
 	index = mode.index;
@@ -1079,11 +1070,8 @@ static int ar0144_vv_set_fps(struct ar0144 *sensor, void *args)
 
 static int ar0144_vv_read_reg(struct ar0144 *sensor, void *args)
 {
-	struct device *dev = sensor->subdev.dev;
 	struct vvcam_sccb_data_s reg;
 	int ret;
-
-	dev_dbg(dev, "%s\n", __func__);
 
 	ret = copy_from_user(&reg, args, sizeof(struct vvcam_sccb_data_s));
 	if (ret)
@@ -1102,11 +1090,8 @@ static int ar0144_vv_read_reg(struct ar0144 *sensor, void *args)
 
 static int ar0144_vv_write_reg(struct ar0144 *sensor, void *args)
 {
-	struct device *dev = sensor->subdev.dev;
 	struct vvcam_sccb_data_s reg;
 	int ret;
-
-	dev_dbg(dev, "%s\n", __func__);
 
 	ret = copy_from_user(&reg, args, sizeof(struct vvcam_sccb_data_s));
 	if (ret)
