@@ -370,8 +370,6 @@ struct ar0144 {
 	struct clk *extclk;
 	struct gpio_desc *reset_gpio;
 
-	struct mutex lock;
-
 	unsigned int reset_delay_ms;
 	bool trigger;
 };
@@ -2871,13 +2869,6 @@ static int ar0144_create_ctrls(struct ar0144 *sensor)
 	int i;
 	int ret;
 
-	ret = v4l2_ctrl_handler_init(&sensor->ctrls, 10);
-	if (ret)
-		return ret;
-
-	sensor->subdev.ctrl_handler = &sensor->ctrls;
-	sensor->ctrls.lock = &sensor->lock;
-
 	for (i = 0; i < ARRAY_SIZE(ar0144_ctrls); i++) {
 		ctrl_cfg = ar0144_ctrls[i];
 
@@ -3735,8 +3726,6 @@ static int ar0144_probe(struct i2c_client *i2c)
 	if (ret)
 		return ret;
 
-	mutex_init(&sensor->lock);
-
 	v4l2_i2c_subdev_init(sd, i2c, &ar0144_subdev_ops);
 
 	switch (sensor->model->chip) {
@@ -3767,10 +3756,16 @@ static int ar0144_probe(struct i2c_client *i2c)
 	if (ret)
 		goto out_media;
 
-	sd->state_lock = &sensor->lock;
-	ret = v4l2_subdev_init_finalize(sd);
+	ret = v4l2_ctrl_handler_init(&sensor->ctrls, 10);
 	if (ret)
 		goto out_media;
+
+	sensor->subdev.ctrl_handler = &sensor->ctrls;
+
+	sd->state_lock = sensor->ctrls.lock;
+	ret = v4l2_subdev_init_finalize(sd);
+	if (ret)
+		goto out_ctrl;
 
 	ret = v4l2_async_register_subdev_sensor(&sensor->subdev);
 	if (ret)
@@ -3779,11 +3774,11 @@ static int ar0144_probe(struct i2c_client *i2c)
 	return 0;
 
 out:
-	v4l2_ctrl_handler_free(&sensor->ctrls);
 	v4l2_subdev_cleanup(sd);
+out_ctrl:
+	v4l2_ctrl_handler_free(&sensor->ctrls);
 out_media:
 	media_entity_cleanup(&sd->entity);
-	mutex_destroy(&sensor->lock);
 	return ret;
 }
 
@@ -3796,7 +3791,6 @@ static void ar0144_remove(struct i2c_client *i2c)
 	v4l2_ctrl_handler_free(&sensor->ctrls);
 	v4l2_subdev_cleanup(sd);
 	media_entity_cleanup(&sd->entity);
-	mutex_destroy(&sensor->lock);
 }
 
 static const struct ar0144_sensor_limits ar0144_limits = {
