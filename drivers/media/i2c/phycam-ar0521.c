@@ -607,7 +607,7 @@ static int ar0521_vv_get_sensormode(struct ar0521 *sensor, void *args)
 			     sizeof(min_fps_allowed));
 
 	state = v4l2_subdev_get_locked_active_state(&sensor->subdev);
-	fmt = v4l2_subdev_get_pad_format(&sensor->subdev, state, 0);
+	fmt = v4l2_subdev_state_get_format(state, 0);
 
 	index = bpp_to_index(sensor->bpp);
 	pix_freq = sensor->pll[index].pix_freq;
@@ -860,7 +860,7 @@ static int ar0521_vv_set_fps(struct ar0521 *sensor, void *args)
 		return -EIO;
 
 	state = v4l2_subdev_get_locked_active_state(&sensor->subdev);
-	fmt = v4l2_subdev_get_pad_format(&sensor->subdev, state, 0);
+	fmt = v4l2_subdev_state_get_format(state, 0);
 
 	index = bpp_to_index(sensor->bpp);
 	pix_freq = sensor->pll[index].pix_freq;
@@ -1502,8 +1502,8 @@ static int ar0521_config_frame(struct ar0521 *sensor, struct v4l2_subdev_state *
 	int ret;
 	u16 x_end, y_end;
 
-	fmt = v4l2_subdev_get_pad_format(&sensor->subdev, state, 0);
-	crop = v4l2_subdev_get_pad_crop(&sensor->subdev, state, 0);
+	fmt = v4l2_subdev_state_get_format(state, 0);
+	crop = v4l2_subdev_state_get_crop(state, 0);
 	height = fmt->height * sensor->h_skip;
 	width = fmt->width * sensor->w_skip;
 
@@ -1714,27 +1714,6 @@ out:
 	return ret;
 }
 
-static int ar0521_g_frame_interval(struct v4l2_subdev *sd,
-				   struct v4l2_subdev_frame_interval *interval)
-{
-	struct ar0521 *sensor = to_ar0521(sd);
-	unsigned long pix_freq;
-	int index;
-
-	mutex_lock(&sensor->lock);
-
-	index = bpp_to_index(sensor->bpp);
-	pix_freq = sensor->pll[index].pix_freq;
-
-	interval->interval.numerator = 10;
-	interval->interval.denominator = div_u64(pix_freq * 10ULL,
-						 sensor->vlen * sensor->hlen);
-
-	mutex_unlock(&sensor->lock);
-
-	return 0;
-}
-
 static unsigned int ar0521_find_skipfactor(unsigned int input,
 					   unsigned int output)
 {
@@ -1778,7 +1757,7 @@ static int ar0521_enum_frame_size(struct v4l2_subdev *sd,
 {
 	struct v4l2_rect *crop;
 
-	crop = v4l2_subdev_get_pad_crop(sd, state, fse->pad);
+	crop = v4l2_subdev_state_get_crop(state, fse->pad);
 
 	if (fse->index >= 4)
 		return -EINVAL;
@@ -1871,12 +1850,12 @@ static int ar0521_set_fmt(struct v4l2_subdev *sd,
 	    format->which == V4L2_SUBDEV_FORMAT_ACTIVE)
 		return -EBUSY;
 
-	fmt = v4l2_subdev_get_pad_format(sd, state, format->pad);
+	fmt = v4l2_subdev_state_get_format(state, format->pad);
 	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
 		active_state = v4l2_subdev_get_locked_active_state(sd);
-		crop = v4l2_subdev_get_pad_crop(sd, active_state, format->pad);
+		crop = v4l2_subdev_state_get_crop(active_state, format->pad);
 	} else {
-		crop = v4l2_subdev_get_pad_crop(sd, state, format->pad);
+		crop = v4l2_subdev_state_get_crop(state, format->pad);
 	}
 
 	if (sensor->model == AR0521_MODEL_COLOR)
@@ -1920,6 +1899,24 @@ static int ar0521_set_fmt(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int ar0521_get_frame_interval(struct v4l2_subdev *sd,
+				   struct v4l2_subdev_state *state,
+				   struct v4l2_subdev_frame_interval *interval)
+{
+	struct ar0521 *sensor = to_ar0521(sd);
+	unsigned long pix_freq;
+	int index;
+
+	index = bpp_to_index(sensor->bpp);
+	pix_freq = sensor->pll[index].pix_freq;
+
+	interval->interval.numerator = 10;
+	interval->interval.denominator = div_u64(pix_freq * 10ULL,
+						 sensor->vlen * sensor->hlen);
+
+	return 0;
+}
+
 static int ar0521_group_param_hold(struct ar0521 *sensor)
 {
 	return ar0521_set_bits(sensor, AR0521_RESET_REGISTER,
@@ -1946,7 +1943,7 @@ static int ar0521_set_selection(struct v4l2_subdev *sd,
 	if (sel->target != V4L2_SEL_TGT_CROP)
 		return -EINVAL;
 
-	crop = v4l2_subdev_get_pad_crop(sd, state, sel->pad);
+	crop = v4l2_subdev_state_get_crop(state, sel->pad);
 
 	if (sensor->is_streaming &&
 	    (sel->r.width != crop->width ||
@@ -1995,7 +1992,7 @@ static int ar0521_get_selection(struct v4l2_subdev *sd,
 
 	switch (sel->target) {
 	case V4L2_SEL_TGT_CROP:
-		crop = v4l2_subdev_get_pad_crop(sd, state, sel->pad);
+		crop = v4l2_subdev_state_get_crop(state, sel->pad);
 		sel->r = *crop;
 		break;
 	case V4L2_SEL_TGT_CROP_DEFAULT:
@@ -2036,7 +2033,7 @@ static int ar0521_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 	struct v4l2_mbus_framefmt *fmt;
 
 	state = v4l2_subdev_lock_and_get_active_state(sd);
-	fmt = v4l2_subdev_get_pad_format(sd, state, pad);
+	fmt = v4l2_subdev_state_get_format(state, pad);
 
 	memset(fd, 0, sizeof(*fd));
 
@@ -2074,7 +2071,6 @@ static const struct v4l2_subdev_core_ops ar0521_subdev_core_ops = {
 
 static const struct v4l2_subdev_video_ops ar0521_subdev_video_ops = {
 	.s_stream		= ar0521_s_stream,
-	.g_frame_interval	= ar0521_g_frame_interval,
 };
 
 static const struct v4l2_subdev_pad_ops ar0521_subdev_pad_ops = {
@@ -2082,6 +2078,7 @@ static const struct v4l2_subdev_pad_ops ar0521_subdev_pad_ops = {
 	.enum_frame_size	= ar0521_enum_frame_size,
 	.set_fmt		= ar0521_set_fmt,
 	.get_fmt		= v4l2_subdev_get_fmt,
+	.get_frame_interval	= ar0521_get_frame_interval,
 	.set_selection		= ar0521_set_selection,
 	.get_selection		= ar0521_get_selection,
 	.get_mbus_config	= ar0521_get_mbus_config,
@@ -2120,7 +2117,7 @@ static int ar0521_set_analogue_gain(struct ar0521 *sensor, unsigned int val)
 	return 1000 * (1u << coarse) * (16 + fine) / 16;
 }
 
-unsigned int ar0521_get_min_color_gain(struct ar0521 *sensor)
+static unsigned int ar0521_get_min_color_gain(struct ar0521 *sensor)
 {
 	unsigned int gains[4];
 	int min_idx = 0;
@@ -2261,7 +2258,7 @@ static int ar0521_s_ctrl(struct v4l2_ctrl *ctrl)
 	u16 mask;
 
 	state = v4l2_subdev_get_locked_active_state(&sensor->subdev);
-	fmt = v4l2_subdev_get_pad_format(&sensor->subdev, state, 0);
+	fmt = v4l2_subdev_state_get_format(state, 0);
 
 	switch (ctrl->id) {
 	case V4L2_CID_VBLANK:
@@ -2791,8 +2788,8 @@ static void ar0521_set_defaults(struct ar0521 *sensor)
 	struct v4l2_rect *crop;
 
 	state = v4l2_subdev_lock_and_get_active_state(&sensor->subdev);
-	fmt = v4l2_subdev_get_pad_format(&sensor->subdev, state, 0);
-	crop = v4l2_subdev_get_pad_crop(&sensor->subdev, state, 0);
+	fmt = v4l2_subdev_state_get_format(state, 0);
+	crop = v4l2_subdev_state_get_crop(state, 0);
 
 	sensor->limits = (struct ar0521_sensor_limits) {
 					/* mim		max      */
