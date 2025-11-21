@@ -373,7 +373,6 @@ struct ar0144 {
 	struct mutex lock;
 
 	unsigned int reset_delay_ms;
-	bool is_streaming;
 	bool trigger;
 };
 
@@ -687,13 +686,18 @@ static inline struct ar0144 *to_ar0144(struct v4l2_subdev *sd);
 static inline int bpp_to_index(struct ar0144 *sensor, unsigned int bpp);
 static int ar0144_read(struct ar0144 *sensor, u16 reg, u16 *val);
 static int ar0144_write(struct ar0144 *sensor, u16 reg, u16 val);
-static int ar0144_s_stream(struct v4l2_subdev *sd, int enable);
 static int ar0144_set_selection(struct v4l2_subdev *sd,
 				struct v4l2_subdev_state *state,
 				struct v4l2_subdev_selection *sel);
 static int ar0144_set_fmt(struct v4l2_subdev *sd,
 			  struct v4l2_subdev_state *state,
 			  struct v4l2_subdev_format *format);
+static int ar0144_enable_streams(struct v4l2_subdev *sd,
+				 struct v4l2_subdev_state *state,
+				 u32 pad,  u64 streams_mask);
+static int ar0144_disable_streams(struct v4l2_subdev *sd,
+				  struct v4l2_subdev_state *state,
+				  u32 pad,  u64 streams_mask);
 
 
 static void ar0144_vv_querycap(struct ar0144 *sensor, void *args)
@@ -897,6 +901,7 @@ static int ar0144_vv_set_sensormode(struct ar0144 *sensor, void *args)
 
 static int ar0144_vv_s_stream(struct ar0144 *sensor, void *args)
 {
+	struct v4l2_subdev *sd = &sensor->subdev;
 	unsigned int enable = 0;
 	int ret;
 
@@ -904,7 +909,15 @@ static int ar0144_vv_s_stream(struct ar0144 *sensor, void *args)
 	if (ret)
 		return -EIO;
 
-	return ar0144_s_stream(&sensor->subdev, enable);
+	if (enable)
+		ret = v4l2_subdev_enable_streams(sd, 0, BIT_ULL(0));
+	else
+		ret = v4l2_subdev_disable_streams(sd, 0, BIT_ULL(0));
+
+	if (ret == -EALREADY)
+		ret = 0;
+
+	return ret;
 }
 
 static int ar0144_vv_set_exposure(struct ar0144 *sensor, void *args)
@@ -1640,87 +1653,7 @@ static int ar0144_config_mipi(struct ar0144 *sensor)
 	return ret;
 }
 
-static int ar0144_stream_on(struct ar0144 *sensor, struct v4l2_subdev_state *state)
-{
-	u16 mono_op;
-	int ret;
-
-	/* If the MIPI bus is in use the data and clk lanes are in LP-11 state.
-	 * So we have to unset streaming and disable test mode before
-	 * configuring the sensor.
-	 */
-	if (sensor->info.bus_type == V4L2_MBUS_CSI2_DPHY) {
-		ret = ar0144_enter_standby(sensor);
-		if (ret)
-			return ret;
-	}
-
-	ret = ar0144_config_pll(sensor);
-	if (ret)
-		return ret;
-
-	ret = ar0144_config_frame(sensor, state);
-	if (ret)
-		return ret;
-
-	mono_op = sensor->color == AR0144_MODEL_MONOCHROME;
-
-	ret = ar0144_update_bits(sensor, AR0144_DIGITAL_TEST, BIT_MONOCHROME_OP,
-				 mono_op ? BIT_MONOCHROME_OP : 0);
-	if (ret)
-		return ret;
-
-	if (sensor->info.bus_type == V4L2_MBUS_PARALLEL)
-		ret = ar0144_config_parallel(sensor);
-	else
-		ret = ar0144_config_mipi(sensor);
-
-	if (ret)
-		return ret;
-
-	sensor->is_streaming = true;
-	return 0;
-}
-
-static int ar0144_stream_off(struct ar0144 *sensor)
-{
-	int ret;
-
-	ret = ar0144_enter_standby(sensor);
-	sensor->is_streaming = false;
-
-	return ret;
-}
-
 /* V4L2 subdev video ops */
-static int ar0144_s_stream(struct v4l2_subdev *sd, int enable)
-{
-	struct ar0144 *sensor = to_ar0144(sd);
-	struct v4l2_subdev_state *state;
-	int ret = 0;
-
-	dev_dbg(sd->dev, "%s enable: %d\n", __func__, enable);
-
-	state = v4l2_subdev_lock_and_get_active_state(&sensor->subdev);
-
-	if (enable && sensor->is_streaming) {
-		ret = -EBUSY;
-		goto out;
-	}
-
-	if (!enable && !sensor->is_streaming)
-		goto out;
-
-	if (enable)
-		ret = ar0144_stream_on(sensor, state);
-	else
-		ret = ar0144_stream_off(sensor);
-
-out:
-	v4l2_subdev_unlock_state(state);
-	return ret;
-}
-
 static int ar0144_pre_streamon(struct v4l2_subdev *sd, u32 flags)
 {
 	struct ar0144 *sensor = to_ar0144(sd);
@@ -1871,7 +1804,7 @@ static int ar0144_set_fmt(struct v4l2_subdev *sd,
 	unsigned int width, height;
 	unsigned int w_skip, h_skip;
 
-	if (sensor->is_streaming &&
+	if (v4l2_subdev_is_streaming(&sensor->subdev) &&
 	    format->which == V4L2_SUBDEV_FORMAT_ACTIVE)
 		return -EBUSY;
 
@@ -1969,7 +1902,8 @@ static int ar0144_set_selection(struct v4l2_subdev *sd,
 
 	crop = v4l2_subdev_state_get_crop(state, sel->pad);
 
-	if (sensor->is_streaming && (sel->r.width != crop->width || sel->r.height != crop->height))
+	if (v4l2_subdev_is_streaming(&sensor->subdev) &&
+	    (sel->r.width != crop->width || sel->r.height != crop->height))
 		return -EBUSY;
 
 	/* Check againts max, min values */
@@ -1981,7 +1915,7 @@ static int ar0144_set_selection(struct v4l2_subdev *sd,
 	crop->width = min_t(unsigned int, sel->r.width, max_w - crop->left);
 	crop->height = min_t(unsigned int, sel->r.height, max_h - crop->top);
 
-	if (sensor->is_streaming && sel->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
+	if (v4l2_subdev_is_streaming(&sensor->subdev) && sel->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
 		ret = ar0144_group_param_hold(sensor);
 		if (ret)
 			return ret;
@@ -2050,6 +1984,59 @@ static int ar0144_get_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
 	return 0;
 }
 
+static int ar0144_enable_streams(struct v4l2_subdev *sd,
+				 struct v4l2_subdev_state *state,
+				 u32 pad,  u64 streams_mask)
+{
+	struct ar0144 *sensor = to_ar0144(sd);
+	u16 mono_op;
+	int ret;
+
+	/* If the MIPI bus is in use the data and clk lanes are in LP-11 state.
+	 * So we have to unset streaming and disable test mode before
+	 * configuring the sensor.
+	 */
+	if (sensor->info.bus_type == V4L2_MBUS_CSI2_DPHY) {
+		ret = ar0144_enter_standby(sensor);
+		if (ret)
+			return ret;
+	}
+
+	ret = ar0144_config_pll(sensor);
+	if (ret)
+		return ret;
+
+	ret = ar0144_config_frame(sensor, state);
+	if (ret)
+		return ret;
+
+	mono_op = sensor->color == AR0144_MODEL_MONOCHROME;
+
+	ret = ar0144_update_bits(sensor, AR0144_DIGITAL_TEST, BIT_MONOCHROME_OP,
+				 mono_op ? BIT_MONOCHROME_OP : 0);
+	if (ret)
+		return ret;
+
+	if (sensor->info.bus_type == V4L2_MBUS_PARALLEL)
+		ret = ar0144_config_parallel(sensor);
+	else
+		ret = ar0144_config_mipi(sensor);
+
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+static int ar0144_disable_streams(struct v4l2_subdev *sd,
+				  struct v4l2_subdev_state *state,
+				  u32 pad,  u64 streams_mask)
+{
+	struct ar0144 *sensor = to_ar0144(sd);
+
+	return ar0144_enter_standby(sensor);
+}
+
 static int ar0144_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 				 struct v4l2_mbus_frame_desc *fd)
 {
@@ -2102,7 +2089,6 @@ static const struct v4l2_subdev_core_ops ar0144_subdev_core_ops = {
 };
 
 static const struct v4l2_subdev_video_ops ar0144_subdev_video_ops = {
-	.s_stream		= ar0144_s_stream,
 	.pre_streamon           = ar0144_pre_streamon,
 	.post_streamoff         = ar0144_post_streamoff,
 };
@@ -2116,6 +2102,8 @@ static const struct v4l2_subdev_pad_ops ar0144_subdev_pad_ops = {
 	.set_selection		= ar0144_set_selection,
 	.get_selection		= ar0144_get_selection,
 	.get_mbus_config	= ar0144_get_mbus_config,
+	.enable_streams		= ar0144_enable_streams,
+	.disable_streams	= ar0144_disable_streams,
 	.get_frame_desc		= ar0144_get_frame_desc,
 };
 
@@ -2304,7 +2292,7 @@ static int ar0144_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_VBLANK:
 		unsigned int vlen_old;
 
-		if (sensor->is_streaming) {
+		if (v4l2_subdev_is_streaming(&sensor->subdev)) {
 			ret = ar0144_group_param_hold(sensor);
 			if (ret)
 				break;
@@ -2313,7 +2301,7 @@ static int ar0144_s_ctrl(struct v4l2_ctrl *ctrl)
 		vlen_old = sensor->vlen;
 		sensor->vlen = fmt->height + ctrl->val;
 
-		if (sensor->is_streaming) {
+		if (v4l2_subdev_is_streaming(&sensor->subdev)) {
 			ret = ar0144_config_frame(sensor, state);
 			if (ret) {
 				sensor->vlen = vlen_old;
@@ -2329,7 +2317,7 @@ static int ar0144_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_HBLANK:
 		unsigned int hlen_old;
 
-		if (sensor->is_streaming) {
+		if (v4l2_subdev_is_streaming(&sensor->subdev)) {
 			ret = ar0144_group_param_hold(sensor);
 			if (ret)
 				break;
@@ -2338,7 +2326,7 @@ static int ar0144_s_ctrl(struct v4l2_ctrl *ctrl)
 		hlen_old = sensor->hlen;
 		sensor->hlen = fmt->width + ctrl->val;
 
-		if (sensor->is_streaming) {
+		if (v4l2_subdev_is_streaming(&sensor->subdev)) {
 			ret = ar0144_config_frame(sensor, state);
 			if (ret) {
 				sensor->hlen = hlen_old;
@@ -2410,7 +2398,7 @@ static int ar0144_s_ctrl(struct v4l2_ctrl *ctrl)
 					 BIT_MIN_ANA_GAIN(ctrl->val));
 		break;
 	case V4L2_CID_X_EMBEDDED_DATA:
-		if (sensor->is_streaming)
+		if (v4l2_subdev_is_streaming(&sensor->subdev))
 			return -EBUSY;
 
 		/*
@@ -2491,7 +2479,7 @@ static int ar0144_s_ctrl(struct v4l2_ctrl *ctrl)
 					 BIT_LED_DELAY(ctrl->val));
 		break;
 	case V4L2_CID_X_DYNAMIC_PIXEL_CORRECTION:
-		if (sensor->is_streaming)
+		if (v4l2_subdev_is_streaming(&sensor->subdev))
 			return -EBUSY;
 
 		val = ctrl->val ? BIT_PIX_DEF_1D_DDC_EN : 0;
@@ -2502,7 +2490,7 @@ static int ar0144_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_X_TRIGGER_MODE:
 		sensor->trigger = ctrl->val ? true : false;
 
-		if (!sensor->is_streaming)
+		if (!v4l2_subdev_is_streaming(&sensor->subdev))
 			break;
 
 		if (sensor->trigger)
