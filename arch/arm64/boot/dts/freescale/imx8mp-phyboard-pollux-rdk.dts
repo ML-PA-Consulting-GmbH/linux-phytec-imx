@@ -245,6 +245,7 @@
 	pinctrl-1 = <&pinctrl_i2c3_gpio>;
 	sda-gpios = <&gpio5 18 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 	scl-gpios = <&gpio5 19 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+	status = "okay";
 };
 
 &ldb {
