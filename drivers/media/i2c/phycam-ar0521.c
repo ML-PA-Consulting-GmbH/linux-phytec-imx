@@ -351,7 +351,6 @@ struct ar0521 {
 	unsigned int reset_delay_ms;
 	int trigger_pin;
 	int trigger;
-	bool is_streaming;
 };
 
 static struct vvcam_mode_info_s ar0521_modes[] = {
@@ -529,7 +528,12 @@ static inline struct ar0521 *to_ar0521(struct v4l2_subdev *sd);
 static inline int bpp_to_index(unsigned int bpp);
 static int ar0521_read(struct ar0521 *sensor, u16 reg, u16 *val);
 static int ar0521_write(struct ar0521 *sensor, u16 reg, u16 val);
-static int ar0521_s_stream(struct v4l2_subdev *sd, int enable);
+static int ar0521_enable_streams(struct v4l2_subdev *sd,
+				 struct v4l2_subdev_state *state,
+				 u32 pad,  u64 streams_mask);
+static int ar0521_disable_streams(struct v4l2_subdev *sd,
+				 struct v4l2_subdev_state *state,
+				 u32 pad,  u64 streams_mask);
 static int ar0521_set_selection(struct v4l2_subdev *sd,
 				struct v4l2_subdev_state *state,
 				struct v4l2_subdev_selection *sel);
@@ -719,6 +723,7 @@ static int ar0521_vv_set_sensormode(struct ar0521 *sensor, void *args)
 
 static int ar0521_vv_s_stream(struct ar0521 *sensor, void *args)
 {
+	struct v4l2_subdev *sd = &sensor->subdev;
 	unsigned int enable = 0;
 	int ret;
 
@@ -726,7 +731,15 @@ static int ar0521_vv_s_stream(struct ar0521 *sensor, void *args)
 	if (ret)
 		return -EIO;
 
-	return ar0521_s_stream(&sensor->subdev, enable);
+	if (enable)
+		ret = v4l2_subdev_enable_streams(sd, 0, BIT_ULL(0));
+	else
+		ret = v4l2_subdev_disable_streams(sd, 0, BIT_ULL(0));
+
+	if (ret == -EALREADY)
+		ret = 0;
+
+	return ret;
 }
 
 static int ar0521_vv_set_exposure(struct ar0521 *sensor, void *args)
@@ -1290,7 +1303,7 @@ static int ar0521_set_trigger_mode(struct ar0521 *sensor, int mode)
 	int pin = sensor->trigger_pin;
 	int ret;
 
-	if (sensor->is_streaming) {
+	if (v4l2_subdev_is_streaming(&sensor->subdev)) {
 		ret = ar0521_clear_bits(sensor, AR0521_RESET_REGISTER,
 					BIT_STREAM);
 		if (ret)
@@ -1354,7 +1367,7 @@ static int ar0521_set_trigger_mode(struct ar0521 *sensor, int mode)
 		return -EINVAL;
 	}
 
-	if (sensor->is_streaming)
+	if (v4l2_subdev_is_streaming(&sensor->subdev))
 		return ar0521_set_bits(sensor, AR0521_RESET_REGISTER,
 				       BIT_STREAM);
 	else
@@ -1602,76 +1615,6 @@ static int ar0521_config_mipi(struct ar0521 *sensor)
 	return ret;
 }
 
-static int ar0521_stream_on(struct ar0521 *sensor, struct v4l2_subdev_state *state)
-{
-	int ret;
-
-	ret = ar0521_enter_standby(sensor);
-	if (ret)
-		return ret;
-
-	ret = ar0521_config_pll(sensor);
-	if (ret)
-		return ret;
-
-	ret = ar0521_config_frame(sensor, state);
-	if (ret)
-		return ret;
-
-	ret = ar0521_config_mipi(sensor);
-	if (ret)
-		return ret;
-
-	sensor->is_streaming = true;
-	return 0;
-}
-
-static int ar0521_stream_off(struct ar0521 *sensor)
-{
-	int ret;
-
-	if (sensor->trigger) {
-		ret = ar0521_unset_trigger(sensor);
-		if (ret)
-			dev_warn(sensor->subdev.dev,
-				 "Failed to unset trigger mode\n");
-	}
-
-	ret = ar0521_enter_standby(sensor);
-
-	sensor->is_streaming = false;
-	return ret;
-}
-
-/* V4L2 subdev video ops */
-static int ar0521_s_stream(struct v4l2_subdev *sd, int enable)
-{
-	struct ar0521 *sensor = to_ar0521(sd);
-	struct v4l2_subdev_state *state;
-	int ret = 0;
-
-	dev_dbg(sd->dev, "%s enable: %d\n", __func__, enable);
-
-	state = v4l2_subdev_lock_and_get_active_state(&sensor->subdev);
-
-	if (enable && sensor->is_streaming) {
-		ret = -EBUSY;
-		goto out;
-	}
-
-	if (!enable && !sensor->is_streaming)
-		goto out;
-
-	if (enable)
-		ret = ar0521_stream_on(sensor, state);
-	else
-		ret = ar0521_stream_off(sensor);
-
-out:
-	v4l2_subdev_unlock_state(state);
-	return ret;
-}
-
 static unsigned int ar0521_find_skipfactor(unsigned int input,
 					   unsigned int output)
 {
@@ -1804,8 +1747,7 @@ static int ar0521_set_fmt(struct v4l2_subdev *sd,
 
 	dev_dbg(sd->dev, "%s\n", __func__);
 
-	if (sensor->is_streaming &&
-	    format->which == V4L2_SUBDEV_FORMAT_ACTIVE)
+	if (v4l2_subdev_is_streaming(sd) && format->which == V4L2_SUBDEV_FORMAT_ACTIVE)
 		return -EBUSY;
 
 	fmt = v4l2_subdev_state_get_format(state, format->pad);
@@ -1903,7 +1845,7 @@ static int ar0521_set_selection(struct v4l2_subdev *sd,
 
 	crop = v4l2_subdev_state_get_crop(state, sel->pad);
 
-	if (sensor->is_streaming &&
+	if (v4l2_subdev_is_streaming(sd) &&
 	    (sel->r.width != crop->width ||
 	     sel->r.height != crop->height))
 		return -EBUSY;
@@ -1916,7 +1858,7 @@ static int ar0521_set_selection(struct v4l2_subdev *sd,
 	crop->width = min_t(unsigned int, sel->r.width, max_w - crop->left);
 	crop->height = min_t(unsigned int, sel->r.height, max_h - crop->top);
 
-	if (sensor->is_streaming && sel->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
+	if (v4l2_subdev_is_streaming(sd) && sel->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
 		ret = ar0521_group_param_hold(sensor);
 		if (ret)
 			return ret;
@@ -1983,6 +1925,51 @@ static int ar0521_get_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
 	return 0;
 }
 
+static int ar0521_enable_streams(struct v4l2_subdev *sd,
+				 struct v4l2_subdev_state *state,
+				 u32 pad,  u64 streams_mask)
+{
+	struct ar0521 *sensor = to_ar0521(sd);
+	int ret;
+
+	ret = ar0521_enter_standby(sensor);
+	if (ret)
+		return ret;
+
+	ret = ar0521_config_pll(sensor);
+	if (ret)
+		return ret;
+
+	ret = ar0521_config_frame(sensor, state);
+	if (ret)
+		return ret;
+
+	ret = ar0521_config_mipi(sensor);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+static int ar0521_disable_streams(struct v4l2_subdev *sd,
+				  struct v4l2_subdev_state *state,
+				  u32 pad,  u64 streams_mask)
+{
+	struct ar0521 *sensor = to_ar0521(sd);
+	int ret;
+
+	if (sensor->trigger) {
+		ret = ar0521_unset_trigger(sensor);
+		if (ret)
+			dev_warn(sensor->subdev.dev,
+				 "Failed to unset trigger mode\n");
+	}
+
+	ret = ar0521_enter_standby(sensor);
+
+	return ret;
+}
+
 static int ar0521_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 				 struct v4l2_mbus_frame_desc *fd)
 {
@@ -2027,7 +2014,6 @@ static const struct v4l2_subdev_core_ops ar0521_subdev_core_ops = {
 };
 
 static const struct v4l2_subdev_video_ops ar0521_subdev_video_ops = {
-	.s_stream		= ar0521_s_stream,
 	.pre_streamon		= ar0521_pre_streamon,
 	.post_streamoff		= ar0521_post_streamoff,
 };
@@ -2041,6 +2027,8 @@ static const struct v4l2_subdev_pad_ops ar0521_subdev_pad_ops = {
 	.set_selection		= ar0521_set_selection,
 	.get_selection		= ar0521_get_selection,
 	.get_mbus_config	= ar0521_get_mbus_config,
+	.enable_streams		= ar0521_enable_streams,
+	.disable_streams	= ar0521_disable_streams,
 	.get_frame_desc		= ar0521_get_frame_desc,
 };
 
@@ -2221,7 +2209,7 @@ static int ar0521_s_ctrl(struct v4l2_ctrl *ctrl)
 
 	switch (ctrl->id) {
 	case V4L2_CID_VBLANK:
-		if (sensor->is_streaming) {
+		if (v4l2_subdev_is_streaming(&sensor->subdev)) {
 			ret = ar0521_group_param_hold(sensor);
 			if (ret)
 				break;
@@ -2230,7 +2218,7 @@ static int ar0521_s_ctrl(struct v4l2_ctrl *ctrl)
 		vlen_old = sensor->vlen;
 		sensor->vlen = fmt->height + ctrl->val;
 
-		if (sensor->is_streaming) {
+		if (v4l2_subdev_is_streaming(&sensor->subdev)) {
 			ret = ar0521_config_frame(sensor, state);
 			if (ret) {
 				sensor->vlen = vlen_old;
@@ -2244,7 +2232,7 @@ static int ar0521_s_ctrl(struct v4l2_ctrl *ctrl)
 
 		break;
 	case V4L2_CID_HBLANK:
-		if (sensor->is_streaming) {
+		if (v4l2_subdev_is_streaming(&sensor->subdev)) {
 			ret = ar0521_group_param_hold(sensor);
 			if (ret)
 				break;
@@ -2253,7 +2241,7 @@ static int ar0521_s_ctrl(struct v4l2_ctrl *ctrl)
 		hlen_old = sensor->hlen;
 		sensor->hlen = fmt->width + ctrl->val;
 
-		if (sensor->is_streaming) {
+		if (v4l2_subdev_is_streaming(&sensor->subdev)) {
 			ret = ar0521_config_frame(sensor, state);
 			if (ret) {
 				sensor->hlen = hlen_old;
@@ -2326,7 +2314,7 @@ static int ar0521_s_ctrl(struct v4l2_ctrl *ctrl)
 		ctrl->val = ar0521_set_analogue_gain(sensor, ctrl->val);
 		break;
 	case V4L2_CID_X_DYNAMIC_PIXEL_CORRECTION:
-		if (sensor->is_streaming)
+		if (v4l2_subdev_is_streaming(&sensor->subdev))
 			return -EBUSY;
 
 		mask = BIT_PIX_DEF_2D_COUPLE_EN |
