@@ -373,7 +373,6 @@ struct ar0144 {
 	struct mutex lock;
 
 	unsigned int reset_delay_ms;
-	int power_user;
 	bool is_streaming;
 	bool trigger;
 };
@@ -1443,69 +1442,6 @@ static void ar0144_reset(struct ar0144 *sensor)
 	msleep(sensor->reset_delay_ms);
 }
 
-static int ar0144_power_on(struct ar0144 *sensor)
-{
-	/* TODO: Implement it as pm_runtime */
-	/* TODO: Enable power, clocks, etc... */
-	return 0;
-}
-
-static void ar0144_power_off(struct ar0144 *sensor)
-{
-	/* TODO: Disable power, clocks, etc... */
-}
-
-/* V4L2 subdev core ops */
-static int ar0144_s_power(struct v4l2_subdev *sd, int on)
-{
-	struct ar0144 *sensor = to_ar0144(sd);
-	int ret = 0;
-
-	dev_dbg(sd->dev, "%s on: %d\n", __func__, on);
-
-	mutex_lock(&sensor->lock);
-
-	if (on) {
-		if (sensor->power_user > 0) {
-			sensor->power_user++;
-			goto out;
-		}
-
-		ret = ar0144_power_on(sensor);
-		if (ret)
-			goto out;
-
-		/* Enable MIPI LP-11 test mode as required by e.g. i.MX 6 */
-		if (sensor->info.bus_type == V4L2_MBUS_CSI2_DPHY &&
-		    !sensor->is_streaming) {
-			ret = ar0144_mipi_enter_lp11(sensor);
-			if (ret) {
-				ar0144_power_off(sensor);
-				goto out;
-			}
-		}
-
-		sensor->power_user++;
-
-	} else {
-		sensor->power_user--;
-		if (sensor->power_user < 0) {
-			dev_err(sd->dev, "More s_power OFF than ON\n");
-			ret = -EINVAL;
-			goto out;
-		}
-
-		if (sensor->power_user == 0) {
-			ar0144_enter_standby(sensor);
-			ar0144_power_off(sensor);
-		}
-	}
-
-out:
-	mutex_unlock(&sensor->lock);
-	return ret;
-}
-
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 static int ar0144_s_register(struct v4l2_subdev *sd,
 			     const struct v4l2_dbg_register *reg)
@@ -1783,6 +1719,24 @@ static int ar0144_s_stream(struct v4l2_subdev *sd, int enable)
 out:
 	v4l2_subdev_unlock_state(state);
 	return ret;
+}
+
+static int ar0144_pre_streamon(struct v4l2_subdev *sd, u32 flags)
+{
+	struct ar0144 *sensor = to_ar0144(sd);
+
+	if (!(flags & V4L2_SUBDEV_PRE_STREAMON_FL_MANUAL_LP))
+		return -EACCES;
+
+	/* Enable MIPI LP-11 test mode as required by e.g. i.MX 6 */
+	return ar0144_mipi_enter_lp11(sensor);
+}
+
+static int ar0144_post_streamoff(struct v4l2_subdev *sd)
+{
+	struct ar0144 *sensor = to_ar0144(sd);
+
+	return ar0144_enter_standby(sensor);
 }
 
 static unsigned int ar0144_find_skipfactor(unsigned int input,
@@ -2140,7 +2094,6 @@ static int ar0144_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 }
 
 static const struct v4l2_subdev_core_ops ar0144_subdev_core_ops = {
-	.s_power		= ar0144_s_power,
 	.ioctl			= ar0144_priv_ioctl,
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 	.s_register		= ar0144_s_register,
@@ -2150,6 +2103,8 @@ static const struct v4l2_subdev_core_ops ar0144_subdev_core_ops = {
 
 static const struct v4l2_subdev_video_ops ar0144_subdev_video_ops = {
 	.s_stream		= ar0144_s_stream,
+	.pre_streamon           = ar0144_pre_streamon,
+	.post_streamoff         = ar0144_post_streamoff,
 };
 
 static const struct v4l2_subdev_pad_ops ar0144_subdev_pad_ops = {
@@ -3530,30 +3485,24 @@ static int ar0144_check_chip_id(struct ar0144 *sensor)
 	u16 model_id, customer_rev;
 	int ret;
 
-	ret = ar0144_power_on(sensor);
-	if (ret) {
-		dev_err(dev, "Failed to power on sensor (%d)\n", ret);
-		return ret;
-	}
-
 	ar0144_reset(sensor);
 
 	ret = ar0144_read(sensor, AR0144_MODEL_ID, &model_id);
 	if (ret) {
 		dev_err(dev, "Failed to read model ID (%d)\n", ret);
-		goto out;
+		return ret;
 	}
 
 	if (model_id != sensor->model->chip_version) {
 		dev_err(dev, "Wrong chip version: 0x%04x <-> 0x%04x\n",
 			model_id, sensor->model->chip_version);
 		ret = -ENOENT;
-		goto out;
+		return ret;
 	}
 
 	ret = ar0144_read(sensor, AR0144_CUSTOMER_REV, &customer_rev);
 	if (ret)
-		goto out;
+		return ret;
 
 	dev_info(dev, "Device ID: 0x%04x, %s model\n",
 		 model_id, customer_rev & BIT_COLOR ? "color" : "monochrome");
@@ -3567,9 +3516,7 @@ static int ar0144_check_chip_id(struct ar0144 *sensor)
 		sensor->color = sensor->model->color;
 	}
 
-out:
-	ar0144_power_off(sensor);
-	return ret;
+	return 0;
 }
 
 static int ar0144_parse_parallel_props(struct ar0144 *sensor,
