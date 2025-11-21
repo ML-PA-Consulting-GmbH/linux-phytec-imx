@@ -346,8 +346,6 @@ struct ar0521 {
 	struct clk *extclk;
 	struct gpio_desc *reset_gpio;
 
-	struct mutex lock;
-
 	unsigned int reset_delay_ms;
 	int trigger_pin;
 	int trigger;
@@ -3405,8 +3403,6 @@ static int ar0521_probe(struct i2c_client *i2c)
 	if (ret)
 		return ret;
 
-	mutex_init(&sensor->lock);
-
 	v4l2_i2c_subdev_init(sd, i2c, &ar0521_subdev_ops);
 
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
@@ -3432,7 +3428,6 @@ static int ar0521_probe(struct i2c_client *i2c)
 		goto out_media;
 
 	sensor->subdev.ctrl_handler = &sensor->ctrls;
-	sensor->ctrls.lock = &sensor->lock;
 
 	sd->state_lock = sensor->ctrls.lock;
 	ret = v4l2_subdev_init_finalize(sd);
@@ -3451,7 +3446,6 @@ out_ctrl:
 	v4l2_ctrl_handler_free(&sensor->ctrls);
 out_media:
 	media_entity_cleanup(&sd->entity);
-	mutex_destroy(&sensor->lock);
 	return ret;
 }
 
@@ -3467,7 +3461,6 @@ static void ar0521_remove(struct i2c_client *i2c)
 	v4l2_ctrl_handler_free(&sensor->ctrls);
 	v4l2_subdev_cleanup(sd);
 	media_entity_cleanup(&sd->entity);
-	mutex_destroy(&sensor->lock);
 }
 
 static const struct i2c_device_id ar0521_id_table[] = {
