@@ -349,7 +349,6 @@ struct ar0521 {
 	struct mutex lock;
 
 	unsigned int reset_delay_ms;
-	int power_user;
 	int trigger_pin;
 	int trigger;
 	bool is_streaming;
@@ -1362,67 +1361,7 @@ static int ar0521_set_trigger_mode(struct ar0521 *sensor, int mode)
 		return 0;
 }
 
-static int ar0521_power_on(struct ar0521 *sensor)
-{
-	/* TODO: Enable power, clocks, etc... */
-	return 0;
-}
-
-static void ar0521_power_off(struct ar0521 *sensor)
-{
-	/* TODO: Disable power, clocks, etc... */
-}
-
 /* V4L2 subdev core ops */
-static int ar0521_s_power(struct v4l2_subdev *sd, int on)
-{
-	struct ar0521 *sensor = to_ar0521(sd);
-	int ret = 0;
-
-	dev_dbg(sd->dev, "%s on: %d\n", __func__, on);
-
-	mutex_lock(&sensor->lock);
-
-	if (on) {
-		if (sensor->power_user > 0) {
-			sensor->power_user++;
-			goto out;
-		}
-
-		ret = ar0521_power_on(sensor);
-		if (ret)
-			goto out;
-
-		/* Enable MIPI LP-11 test mode as required by e.g. i.MX 6 */
-		if (!sensor->is_streaming) {
-			ret = ar0521_mipi_enter_lp11(sensor);
-			if (ret) {
-				ar0521_power_off(sensor);
-				goto out;
-			}
-		}
-
-		sensor->power_user++;
-
-	} else {
-		sensor->power_user--;
-		if (sensor->power_user < 0) {
-			dev_err(sd->dev, "More s_power OFF than ON\n");
-			ret = -EINVAL;
-			goto out;
-		}
-
-		if (sensor->power_user == 0) {
-			ar0521_enter_standby(sensor);
-			ar0521_power_off(sensor);
-		}
-	}
-
-out:
-	mutex_unlock(&sensor->lock);
-	return ret;
-}
-
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 static int ar0521_s_register(struct v4l2_subdev *sd,
 			     const struct v4l2_dbg_register *reg)
@@ -1444,6 +1383,25 @@ static int ar0521_g_register(struct v4l2_subdev *sd,
 	return ar0521_read(sensor, reg->reg, (u16 *)&reg->val);
 }
 #endif
+
+/* V4L2 subdev video ops */
+static int ar0521_pre_streamon(struct v4l2_subdev *sd, u32 flags)
+{
+	struct ar0521 *sensor = to_ar0521(sd);
+
+	if (!(flags & V4L2_SUBDEV_PRE_STREAMON_FL_MANUAL_LP))
+		return -EACCES;
+
+	/* Enable MIPI LP-11 test mode as required by e.g. i.MX 6 */
+	return ar0521_mipi_enter_lp11(sensor);
+}
+
+static int ar0521_post_streamoff(struct v4l2_subdev *sd)
+{
+	struct ar0521 *sensor = to_ar0521(sd);
+
+	return ar0521_enter_standby(sensor);
+}
 
 static int ar0521_config_pll(struct ar0521 *sensor)
 {
@@ -2061,7 +2019,6 @@ static int ar0521_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 }
 
 static const struct v4l2_subdev_core_ops ar0521_subdev_core_ops = {
-	.s_power		= ar0521_s_power,
 	.ioctl			= ar0521_priv_ioctl,
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 	.s_register		= ar0521_s_register,
@@ -2071,6 +2028,8 @@ static const struct v4l2_subdev_core_ops ar0521_subdev_core_ops = {
 
 static const struct v4l2_subdev_video_ops ar0521_subdev_video_ops = {
 	.s_stream		= ar0521_s_stream,
+	.pre_streamon		= ar0521_pre_streamon,
+	.post_streamoff		= ar0521_post_streamoff,
 };
 
 static const struct v4l2_subdev_pad_ops ar0521_subdev_pad_ops = {
@@ -3110,12 +3069,6 @@ static int ar0521_check_chip_id(struct ar0521 *sensor)
 	struct device *dev = sensor->subdev.dev;
 	int ret;
 	u16 model_id, customer_rev;
-
-	ret = ar0521_power_on(sensor);
-	if (ret) {
-		dev_err(dev, "Failed to power on sensor (%d)\n", ret);
-		return ret;
-	}
 
 	ar0521_reset(sensor);
 
