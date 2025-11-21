@@ -1594,26 +1594,6 @@ static int ar0521_config_mipi(struct ar0521 *sensor)
 	return ret;
 }
 
-static unsigned int ar0521_find_skipfactor(unsigned int input,
-					   unsigned int output)
-{
-	int i;
-
-	/*
-	 * We need to determine a matching supported power-of-two skip
-	 * factor. If no exact match is found. the next bigger matching
-	 * factor is returned.
-	 * Supported factors are:
-	 * No Skip, 2, 4
-	 */
-
-	for (i = 0; i < 2; i++)
-		if ((input >> i) <= output)
-			break;
-
-	return (1 << i);
-}
-
 /* V4L2 subdev pad ops */
 static int ar0521_enum_mbus_code(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_state *state,
@@ -1753,8 +1733,8 @@ static int ar0521_set_fmt(struct v4l2_subdev *sd,
 	height = clamp_t(unsigned int, format->format.height,
 			 1, crop->height);
 
-	w_skip = ar0521_find_skipfactor(crop->width, width);
-	h_skip = ar0521_find_skipfactor(crop->height, height);
+	w_skip = clamp(roundup_pow_of_two(crop->width / width), 1, 4);
+	h_skip = clamp(roundup_pow_of_two(crop->height / height), 1, 4);
 
 	fmt->width = crop->width / w_skip;
 	fmt->height = crop->height / h_skip;
