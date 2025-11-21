@@ -272,6 +272,10 @@ dtb-$(CONFIG_ARCH_MXC) += imx8mp-libra-rdk-fpsc-lvds.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-rdk.dtb
 imx8mp-phyboard-pollux-etml1010g3dra-dtbs += imx8mp-phyboard-pollux-rdk.dtb \
 	imx8mp-phyboard-pollux-etml1010g3dra.dtbo
+imx8mp-phyboard-pollux-isi-csi1-dtbs += imx8mp-phyboard-pollux-rdk.dtb imx8mp-phyboard-pollux-isi-csi1.dtbo
+imx8mp-phyboard-pollux-isi-csi2-dtbs += imx8mp-phyboard-pollux-rdk.dtb imx8mp-phyboard-pollux-isi-csi2.dtbo
+imx8mp-phyboard-pollux-isp-csi1-dtbs += imx8mp-phyboard-pollux-rdk.dtb imx8mp-phyboard-pollux-isp-csi1.dtbo
+imx8mp-phyboard-pollux-isp-csi2-dtbs += imx8mp-phyboard-pollux-rdk.dtb imx8mp-phyboard-pollux-isp-csi2.dtbo
 imx8mp-phyboard-pollux-peb-av-10-dtbs += imx8mp-phyboard-pollux-rdk.dtb \
 	imx8mp-phyboard-pollux-peb-av-10.dtbo
 imx8mp-phyboard-pollux-peb-av-10-etml1010g3dra-dtbs += imx8mp-phyboard-pollux-rdk.dtb \
@@ -281,14 +285,30 @@ imx8mp-phyboard-pollux-peb-av-10-ph128800t006-dtbs += imx8mp-phyboard-pollux-rdk
 imx8mp-phyboard-pollux-ph128800t006-dtbs += imx8mp-phyboard-pollux-rdk.dtb \
 	imx8mp-phyboard-pollux-ph128800t006.dtbo
 imx8mp-phyboard-pollux-rdk-no-eth-dtbs += imx8mp-phyboard-pollux-rdk.dtb imx8mp-phycore-no-eth.dtbo
+imx8mp-phyboard-pollux-vm016-csi1-dtbs += imx8mp-phyboard-pollux-rdk.dtb imx8mp-phyboard-pollux-vm016-csi1.dtbo
+imx8mp-phyboard-pollux-vm016-csi2-dtbs += imx8mp-phyboard-pollux-rdk.dtb imx8mp-phyboard-pollux-vm016-csi2.dtbo
+imx8mp-phyboard-pollux-vm017-csi1-dtbs += imx8mp-phyboard-pollux-rdk.dtb imx8mp-phyboard-pollux-vm017-csi1.dtbo
+imx8mp-phyboard-pollux-vm017-csi2-dtbs += imx8mp-phyboard-pollux-rdk.dtb imx8mp-phyboard-pollux-vm017-csi2.dtbo
+imx8mp-phyboard-pollux-vm020-csi1-dtbs += imx8mp-phyboard-pollux-rdk.dtb imx8mp-phyboard-pollux-vm020-csi1.dtbo
+imx8mp-phyboard-pollux-vm020-csi2-dtbs += imx8mp-phyboard-pollux-rdk.dtb imx8mp-phyboard-pollux-vm020-csi2.dtbo
 imx8mp-phyboard-pollux-wlbt-dtbs += imx8mp-phyboard-pollux-rdk.dtb \
        imx8mp-phyboard-pollux-peb-wlbt-05.dtbo
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-etml1010g3dra.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-isi-csi1.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-isi-csi2.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-isp-csi1.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-isp-csi2.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-peb-av-10.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-peb-av-10-etml1010g3dra.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-peb-av-10-ph128800t006.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-ph128800t006.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-rdk-no-eth.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-vm016-csi1.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-vm016-csi2.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-vm017-csi1.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-vm017-csi2.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-vm020-csi1.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-vm020-csi2.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-wlbt.dtb
 
 dtb-$(CONFIG_ARCH_MXC) += imx8mq-evk.dtb imx8mq-evk-rpmsg.dtb
