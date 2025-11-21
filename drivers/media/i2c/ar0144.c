@@ -3163,7 +3163,7 @@ static int ar0144_init_parallel_sensor(struct ar0144 *sensor)
 	if (sensor->model->chip == AR0144)
 		return 0;
 
-	for (i = 0; i < ARRAY_SIZE(ar0234_mipi_regs); i++) {
+	for (i = 0; i < ARRAY_SIZE(ar0234_parallel_regs); i++) {
 		ret = ar0144_write(sensor, ar0234_parallel_regs[i].reg,
 				   ar0234_parallel_regs[i].val);
 		if (ret)
