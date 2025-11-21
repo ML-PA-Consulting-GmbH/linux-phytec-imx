@@ -1744,6 +1744,7 @@ static void mipi_csis_imx8mp_dewarp_ctl_left_just_mode(struct csi_state *state)
 static void mipi_csis_imx8mp_phy_reset(struct csi_state *state)
 {
 	int ret = 0;
+	struct media_pad *source_pad;
 	struct v4l2_subdev *sen_sd;
 	struct reset_control *reset = state->mipi_reset;
 
@@ -1756,6 +1757,15 @@ static void mipi_csis_imx8mp_phy_reset(struct csi_state *state)
 
 	reset_control_deassert(reset);
 	usleep_range(10, 20);
+
+	/* Get remote source pad */
+	source_pad = csis_get_remote_sensor_pad(state);
+	if (!source_pad) {
+		v4l2_err(&state->sd, "%s, No remote pad found!\n", __func__);
+		return;
+	}
+
+	format.pad = source_pad->index;
 
 	sen_sd = csis_get_remote_subdev(state, __func__);
 	if (!sen_sd)
