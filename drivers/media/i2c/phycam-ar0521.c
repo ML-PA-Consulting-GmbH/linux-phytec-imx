@@ -548,8 +548,6 @@ static void ar0521_vv_querycap(struct ar0521 *sensor, void *args)
 	const char *csi_id;
 	int ret;
 
-	dev_dbg(dev, "%s\n", __func__);
-
 	ret = of_property_read_string(dev->of_node, "isp-bus-info", &csi_id);
 	if (!ret) {
 		strscpy((char *)cap->bus_info, csi_id, sizeof(cap->bus_info));
@@ -568,13 +566,10 @@ static void ar0521_vv_querycap(struct ar0521 *sensor, void *args)
 
 static int ar0521_vv_querymode(struct ar0521 *sensor, void *args)
 {
-	struct device *dev = sensor->subdev.dev;
 	struct vvcam_mode_info_array_s *array =
 		(struct vvcam_mode_info_array_s *) args;
 	uint32_t count = ARRAY_SIZE(ar0521_modes);
 	int ret;
-
-	dev_dbg(dev, "%s\n", __func__);
 
 	ret = copy_to_user(&array->count, &count, sizeof(count));
 	if (ret)
@@ -601,7 +596,6 @@ static int ar0521_vv_get_sensormode(struct ar0521 *sensor, void *args)
 	int index;
 	int ret;
 
-	dev_dbg(dev, "%s\n", __func__);
 	dev_dbg(dev, "%s index: %u\n", __func__, sensor->vvcam_cur_mode_index);
 
 	ret = copy_from_user(&min_fps_allowed, &mode->ae_info.min_fps,
@@ -651,7 +645,6 @@ static int ar0521_vv_get_sensormode(struct ar0521 *sensor, void *args)
 
 static int ar0521_vv_set_sensormode(struct ar0521 *sensor, void *args)
 {
-	struct device *dev = sensor->subdev.dev;
 	struct v4l2_subdev *sd = &sensor->subdev;
 	struct v4l2_subdev_state *state;
 	struct v4l2_subdev_selection sel;
@@ -660,8 +653,6 @@ static int ar0521_vv_set_sensormode(struct ar0521 *sensor, void *args)
 	uint32_t index;
 	int bpp;
 	int ret;
-
-	dev_dbg(dev, "%s\n", __func__);
 
 	ret = copy_from_user(&mode, args, sizeof(struct vvcam_mode_info_s));
 	index = mode.index;
@@ -899,11 +890,8 @@ static int ar0521_vv_set_fps(struct ar0521 *sensor, void *args)
 
 static int ar0521_vv_read_reg(struct ar0521 *sensor, void *args)
 {
-	struct device *dev = sensor->subdev.dev;
 	struct vvcam_sccb_data_s reg;
 	int ret;
-
-	dev_dbg(dev, "%s\n", __func__);
 
 	ret = copy_from_user(&reg, args, sizeof(struct vvcam_sccb_data_s));
 	if (ret)
@@ -922,11 +910,8 @@ static int ar0521_vv_read_reg(struct ar0521 *sensor, void *args)
 
 static int ar0521_vv_write_reg(struct ar0521 *sensor, void *args)
 {
-	struct device *dev = sensor->subdev.dev;
 	struct vvcam_sccb_data_s reg;
 	int ret;
-
-	dev_dbg(dev, "%s\n", __func__);
 
 	ret = copy_from_user(&reg, args, sizeof(struct vvcam_sccb_data_s));
 	if (ret)
@@ -1379,8 +1364,6 @@ static int ar0521_s_register(struct v4l2_subdev *sd,
 {
 	struct ar0521 *sensor = to_ar0521(sd);
 
-	dev_dbg(sd->dev, "%s\n", __func__);
-
 	return ar0521_write(sensor, reg->reg, reg->val);
 }
 
@@ -1388,8 +1371,6 @@ static int ar0521_g_register(struct v4l2_subdev *sd,
 			     struct v4l2_dbg_register *reg)
 {
 	struct ar0521 *sensor = to_ar0521(sd);
-
-	dev_dbg(sd->dev, "%s\n", __func__);
 
 	return ar0521_read(sensor, reg->reg, (u16 *)&reg->val);
 }
@@ -1743,8 +1724,6 @@ static int ar0521_set_fmt(struct v4l2_subdev *sd,
 	unsigned int width, height;
 	unsigned int w_skip, h_skip;
 
-	dev_dbg(sd->dev, "%s\n", __func__);
-
 	if (v4l2_subdev_is_streaming(sd) && format->which == V4L2_SUBDEV_FORMAT_ACTIVE)
 		return -EBUSY;
 
@@ -1836,8 +1815,6 @@ static int ar0521_set_selection(struct v4l2_subdev *sd,
 	unsigned int max_w, max_h;
 	int ret = 0;
 
-	dev_dbg(sd->dev, "%s\n", __func__);
-
 	if (sel->target != V4L2_SEL_TGT_CROP)
 		return -EINVAL;
 
@@ -1885,8 +1862,6 @@ static int ar0521_get_selection(struct v4l2_subdev *sd,
 	unsigned int y_min = sensor->limits.y.min;
 	unsigned int x_max = sensor->limits.x.max;
 	unsigned int y_max = sensor->limits.y.max;
-
-	dev_dbg(sd->dev, "%s\n", __func__);
 
 	switch (sel->target) {
 	case V4L2_SEL_TGT_CROP:
