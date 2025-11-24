@@ -633,6 +633,8 @@ static void dwc_csi_device_ipi_config(struct dwc_csi_device *csidev)
 
 	/* Select virtual channel and data type to be processed by IPI */
 	val = CSI2RX_IPI_DATA_TYPE_DT(csi_fmt->data_type);
+	/* Enable embedded data by default */
+	val |= CSI2RX_IPI_DATA_TYPE_EMB_DATA_EN;
 	dwc_csi_write(csidev, CSI2RX_IPI_DATA_TYPE, val);
 
 	/* Set virtual channel 0 as default */
