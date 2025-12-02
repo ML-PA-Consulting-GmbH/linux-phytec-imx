@@ -28,9 +28,14 @@
 		stdout-path = &lpuart7;
 	};
 
-	backlight_lvds1: backlight {
+	backlight: backlight {
 		compatible = "pwm-backlight";
 		power-supply = <&reg_vdd_12v0>;
+		brightness-levels = <0 8 16 32 64 128 255>;
+		default-brightness-level = <8>;
+		enable-gpios = <&gpio_expander2 9 GPIO_ACTIVE_HIGH>;
+		num-interpolated-steps = <2>;
+		pwms = <&tpm3 3 66667 0>;
 		status = "disabled";
 	};
 
@@ -49,7 +54,7 @@
 	};
 
 	panel_lvds1: panel-lvds {
-		backlight = <&backlight_lvds1>;
+		backlight = <&backlight>;
 		power-supply = <&reg_vdd_3v3>;
 		status = "disabled";
 	};
