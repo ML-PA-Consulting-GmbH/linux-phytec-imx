@@ -7,6 +7,7 @@
 
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/leds/common.h>
+#include <dt-bindings/pwm/pwm.h>
 
 #include "imx95-phyflex-fpsc-g-som.dtsi"
 
@@ -57,6 +58,20 @@
 		backlight = <&backlight>;
 		power-supply = <&reg_vdd_3v3>;
 		status = "disabled";
+	};
+
+	fan: pwm-fan {
+		compatible = "pwm-fan";
+		interrupt-parent = <&gpio1>;
+		interrupts = <4 IRQ_TYPE_EDGE_RISING>;
+		#cooling-cells = <2>;
+		/* startup 35%, duty cycle 30%-100%;
+		 * polarity inversion does not appear to work
+		 */
+		cooling-levels = <255 166 96 0>;
+		/* fan-supply = <&reg_vdd_5v0>;  probe fails with this set */
+		pwms = <&tpm5 3 86958 0>;
+		pulses-per-revolution = <2>;
 	};
 
 	reg_vdd_12v0: regulator-vdd-12v0 {
@@ -355,6 +370,47 @@
 			IMX95_PAD_UART2_TXD__AONMIX_TOP_LPUART2_TX	0x31e
 			IMX95_PAD_UART2_RXD__AONMIX_TOP_LPUART2_RX	0x31e
 		>;
+	};
+};
+
+&thermal_zones {
+	a55-thermal {
+		trips {
+			atrip2: trip2 {
+				temperature = <55000>;
+				hysteresis = <2000>;
+				type = "active";
+			};
+
+			atrip3: trip3 {
+				temperature = <65000>;
+				hysteresis = <2000>;
+				type = "active";
+			};
+
+			atrip4: trip4 {
+				temperature = <75000>;
+				hysteresis = <2000>;
+				type = "active";
+			};
+		};
+
+		cooling-maps {
+			map1 {
+				trip = <&atrip2>;
+				cooling-device = <&fan 0 1>;
+			};
+
+			map2 {
+				trip = <&atrip3>;
+				cooling-device = <&fan 1 2>;
+			};
+
+			map3 {
+				trip = <&atrip4>;
+				cooling-device = <&fan 2 3>;
+			};
+		};
 	};
 };
 
