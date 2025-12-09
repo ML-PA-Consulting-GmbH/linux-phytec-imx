@@ -53,6 +53,21 @@
 		standby-gpios = <&gpio_expander2 1 GPIO_ACTIVE_LOW>;
 	};
 
+	osc_mclk: oscillator-mclk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <19200000>;
+		status = "disabled";
+	};
+
+	osc_mclk_gated: oscillator-mclk-gated {
+		compatible = "gpio-gate-clock";
+		#clock-cells = <0>;
+		clocks = <&osc_mclk>;
+		enable-gpios = <&gpio_expander1 8 GPIO_ACTIVE_HIGH>;
+		status = "disabled";
+	};
+
 	panel_lvds1: panel-lvds0 {
 		backlight = <&backlight>;
 		enable-gpios = <&gpio_expander2 9 GPIO_ACTIVE_HIGH>;
