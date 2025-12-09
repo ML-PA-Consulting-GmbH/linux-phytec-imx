@@ -54,7 +54,7 @@
 		standby-gpios = <&gpio_expander2 1 GPIO_ACTIVE_LOW>;
 	};
 
-	panel_lvds1: panel-lvds {
+	panel_lvds1: panel-lvds0 {
 		backlight = <&backlight>;
 		power-supply = <&reg_vdd_3v3>;
 		status = "disabled";
