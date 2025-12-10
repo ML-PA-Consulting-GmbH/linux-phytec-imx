@@ -11,6 +11,8 @@
 	compatible = "phytec,imx95-phyflex-fpsc-g", "fsl,imx95";
 
 	aliases {
+		/delete-property/ i2c0;
+		/delete-property/ serial0;
 		/* FPSC alias definitions */
 		can1 = &flexcan2;
 		can2 = &flexcan1;
