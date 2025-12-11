@@ -14,8 +14,6 @@
 		/delete-property/ i2c0;
 		/delete-property/ serial0;
 		/* FPSC alias definitions */
-		can1 = &flexcan2;
-		can2 = &flexcan1;
 		ethernet1 = &enetc_port1;
 		ethernet2 = &enetc_port0;
 		i2c1 = &lpi2c2;
