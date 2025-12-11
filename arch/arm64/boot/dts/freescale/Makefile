@@ -1065,10 +1065,64 @@ imx95-phyflex-libra-rdk-lvds-ph128800t006-zhc01-dtbs := imx95-phyflex-libra-rdk.
 imx95-phyflex-libra-rdk-peb-av-10-dtbs += imx95-phyflex-libra-rdk.dtb imx95-phyflex-libra-rdk-peb-av-10.dtbo
 imx95-phyflex-libra-rdk-peb-av-10-ph128800t006-zhc01-dtbs += imx95-phyflex-libra-rdk.dtb \
 	imx95-phyflex-libra-rdk-peb-av-10-ph128800t006-zhc01.dtbo
+imx95-phyflex-libra-rdk-vm016-csi1-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm016-csi1.dtbo
+imx95-phyflex-libra-rdk-vm016-fpdlink-port0-csi1-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm016-fpdlink-port0-csi1.dtbo
+imx95-phyflex-libra-rdk-vm016-fpdlink-port1-csi1-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm016-fpdlink-port1-csi1.dtbo
+imx95-phyflex-libra-rdk-vm016-csi2-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm016-csi2.dtbo
+imx95-phyflex-libra-rdk-vm016-fpdlink-port0-csi2-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm016-fpdlink-port0-csi2.dtbo
+imx95-phyflex-libra-rdk-vm016-fpdlink-port1-csi2-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm016-fpdlink-port1-csi2.dtbo
+imx95-phyflex-libra-rdk-vm017-csi1-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm017-csi1.dtbo
+imx95-phyflex-libra-rdk-vm017-fpdlink-port0-csi1-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm017-fpdlink-port0-csi1.dtbo
+imx95-phyflex-libra-rdk-vm017-fpdlink-port1-csi1-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm017-fpdlink-port1-csi1.dtbo
+imx95-phyflex-libra-rdk-vm017-csi2-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm017-csi2.dtbo
+imx95-phyflex-libra-rdk-vm017-fpdlink-port0-csi2-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm017-fpdlink-port0-csi2.dtbo
+imx95-phyflex-libra-rdk-vm017-fpdlink-port1-csi2-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm017-fpdlink-port1-csi2.dtbo
+imx95-phyflex-libra-rdk-vm020-csi1-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm020-csi1.dtbo
+imx95-phyflex-libra-rdk-vm020-fpdlink-port0-csi1-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm020-fpdlink-port0-csi1.dtbo
+imx95-phyflex-libra-rdk-vm020-fpdlink-port1-csi1-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm020-fpdlink-port1-csi1.dtbo
+imx95-phyflex-libra-rdk-vm020-csi2-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm020-csi2.dtbo
+imx95-phyflex-libra-rdk-vm020-fpdlink-port0-csi2-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm020-fpdlink-port0-csi2.dtbo
+imx95-phyflex-libra-rdk-vm020-fpdlink-port1-csi2-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-vm020-fpdlink-port1-csi2.dtbo
 dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-lvds-ph128800t006-zhc01.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-peb-av-10.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-peb-av-10-ph128800t006-zhc01.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm016-csi1.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm016-fpdlink-port0-csi1.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm016-fpdlink-port1-csi1.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm016-csi2.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm016-fpdlink-port0-csi2.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm016-fpdlink-port1-csi2.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm017-csi1.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm017-fpdlink-port0-csi1.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm017-fpdlink-port1-csi1.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm017-csi2.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm017-fpdlink-port0-csi2.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm017-fpdlink-port1-csi2.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm020-csi1.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm020-fpdlink-port0-csi1.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm020-fpdlink-port1-csi1.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm020-csi2.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm020-fpdlink-port0-csi2.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-vm020-fpdlink-port1-csi2.dtb
 
 dtb-$(CONFIG_ARCH_S32) += s32g274a-evb.dtb
 dtb-$(CONFIG_ARCH_S32) += s32g274a-rdb2.dtb
