@@ -674,6 +674,7 @@ dtb-$(CONFIG_ARCH_MXC) += imx91-9x9-qsb-i3c.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx91-phyboard-segin.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx93-phyboard-nash.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx93-phyboard-segin.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx93-phyflex-libra-rdk.dtb
 
 imx91-phyboard-segin-peb-av-02-dtbs += imx91-phyboard-segin.dtb imx91-phyboard-segin-peb-av-02.dtbo
 imx91-phyboard-segin-peb-eval-01-dtbs += imx91-phyboard-segin.dtb imx91-phyboard-segin-peb-eval-01.dtbo
