@@ -1393,6 +1393,13 @@ properties:
           - const: phytec,imx93-phycore-som # phyCORE-i.MX93 SoM
           - const: fsl,imx93
 
+      - description: PHYTEC phyFLEX-i.MX93 FPSC based boards
+        items:
+          - enum:
+              - phytec,imx93-phyflex-libra-rdk # phyFLEX-i.MX 93 Libra Rapid Development Kit
+          - const: phytec,imx93-phyflex-fpsc-g # phyFLEX-i.MX 93 FPSC-Gamma SoM
+          - const: fsl,imx93
+
       - description: Variscite VAR-SOM-MX93 based boards
         items:
           - const: variscite,var-som-mx93-symphony
