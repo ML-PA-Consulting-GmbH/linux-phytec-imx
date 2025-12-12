@@ -207,7 +207,7 @@
 	status = "okay";
 
 	gpio_expander2: gpio@21 {
-		compatible = "ti,tca6416";
+		compatible = "ti,tcal6416";
 		reg = <0x21>;
 		interrupt-parent = <&gpio2>;
 		interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
@@ -254,7 +254,7 @@
 	status = "okay";
 
 	gpio_expander1: gpio@21 {
-		compatible = "ti,tca6416";
+		compatible = "ti,tcal6416";
 		reg = <0x21>;
 		interrupt-controller;
 		interrupt-parent = <&gpio1>;
