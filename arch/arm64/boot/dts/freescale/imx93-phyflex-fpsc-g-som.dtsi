@@ -232,6 +232,11 @@
 	};
 };
 
+/* PXP */
+&epxp {
+	status = "okay";
+};
+
 /* Frequency scaling */
 &lpm {
 	soc-supply = <&buck1>;
