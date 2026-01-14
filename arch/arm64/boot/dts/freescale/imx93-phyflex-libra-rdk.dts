@@ -26,6 +26,68 @@
 		stdout-path = &lpuart1;
 	};
 
+	curr_sens_som_in: current-sense-som-in {
+		compatible = "current-sense-amplifier";
+		#io-channel-cells = <0>;
+		io-channels = <&adc1 0>;
+		sense-gain-div = <3>;
+		sense-gain-mult = <100>;
+		sense-resistor-micro-ohms = <4000>;
+	};
+
+	curr_sens_som_in_ext: current-sense-som-in-ext {
+		compatible = "current-sense-amplifier";
+		#io-channel-cells = <0>;
+		io-channels = <&adc2 0>;
+		sense-gain-div = <15>;
+		sense-gain-mult = <1400>;
+		sense-resistor-micro-ohms = <4000>;
+	};
+
+	curr_sens_vdd_1v8_ext: current-sense-vdd-1v8-ext {
+		compatible = "current-sense-amplifier";
+		#io-channel-cells = <0>;
+		io-channels = <&adc2 6>;
+		sense-gain-mult = <100>;
+		sense-resistor-micro-ohms = <4000>;
+	};
+
+	curr_sens_vdd_3v3_ext: current-sense-vdd-3v3-ext {
+		compatible = "current-sense-amplifier";
+		#io-channel-cells = <0>;
+		io-channels = <&adc2 4>;
+		sense-gain-mult = <100>;
+		sense-resistor-micro-ohms = <4000>;
+	};
+
+	curr_sens_vdd_5v0: current-sense-vdd-5v0 {
+		compatible = "current-sense-amplifier";
+		#io-channel-cells = <0>;
+		io-channels = <&adc1 2>;
+		sense-gain-div = <3>;
+		sense-gain-mult = <100>;
+		sense-resistor-micro-ohms = <4000>;
+	};
+
+	curr_sens_vdd_5v0_ext: current-sense-vdd-5v0-ext {
+		compatible = "current-sense-amplifier";
+		#io-channel-cells = <0>;
+		io-channels = <&adc2 2>;
+		sense-gain-div = <15>;
+		sense-gain-mult = <1400>;
+		sense-resistor-micro-ohms = <4000>;
+	};
+
+	iio-hwmon {
+		compatible = "iio-hwmon";
+		io-channels = <&curr_sens_vdd_1v8_ext>, <&adc2 7>,
+				<&curr_sens_vdd_3v3_ext>, <&adc2 5>,
+				<&curr_sens_vdd_5v0>, <&volt_sens_vdd_5v0>,
+				<&curr_sens_vdd_5v0_ext>, <&volt_sens_vdd_5v0_ext>,
+				<&curr_sens_som_in>, <&volt_sens_som_in>,
+				<&curr_sens_som_in_ext>, <&volt_sens_som_in_ext>;
+	};
+
 	reg_vdd_12v0: regulator-vdd-12v0 {
 		compatible = "regulator-fixed";
 		regulator-always-on;
@@ -69,6 +131,38 @@
 		regulator-max-microvolt = <5000000>;
 		regulator-min-microvolt = <5000000>;
 		regulator-name = "VDD_5V0_REF";
+	};
+
+	volt_sens_som_in: voltage-sense-som-in {
+		compatible = "voltage-divider";
+		#io-channel-cells = <0>;
+		io-channels = <&adc1 1>;
+		output-ohms = <100>;
+		full-ohms = <346>;
+	};
+
+	volt_sens_som_in_ext: voltage-sense-som-in-ext {
+		compatible = "voltage-divider";
+		#io-channel-cells = <0>;
+		io-channels = <&adc2 1>;
+		output-ohms = <280>;
+		full-ohms = <346>;
+	};
+
+	volt_sens_vdd_5v0: voltage-sense-vdd-5v0 {
+		compatible = "voltage-divider";
+		#io-channel-cells = <0>;
+		io-channels = <&adc1 3>;
+		output-ohms = <100>;
+		full-ohms = <346>;
+	};
+
+	volt_sens_vdd_5v0_ext: voltage-sense-vdd-5v0-ext {
+		compatible = "voltage-divider";
+		#io-channel-cells = <0>;
+		io-channels = <&adc2 3>;
+		output-ohms = <280>;
+		full-ohms = <346>;
 	};
 };
 
