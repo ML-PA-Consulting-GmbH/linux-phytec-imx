@@ -72,6 +72,11 @@
 	};
 };
 
+/* ADC */
+&adc1 {
+	status = "okay";
+};
+
 /* FPSC I2C2 */
 &lpi2c1 {
 	status = "okay";
