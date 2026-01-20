@@ -153,24 +153,28 @@
 		compatible = "ti,tmp102";
 		reg = <0x48>;
 		#thermal-sensor-cells = <1>;
+		status = "disabled";
 	};
 
 	emmc_sense: temperature-sensor@49 {
 		compatible = "ti,tmp102";
 		reg = <0x49>;
 		#thermal-sensor-cells = <1>;
+		status = "disabled";
 	};
 
 	ethphy_sense: temperature-sensor@4a {
 		compatible = "ti,tmp102";
 		reg = <0x4a>;
 		#thermal-sensor-cells = <1>;
+		status = "disabled";
 	};
 
 	pmic_sense: temperature-sensor@4b {
 		compatible = "ti,tmp102";
 		reg = <0x4b>;
 		#thermal-sensor-cells = <1>;
+		status = "disabled";
 	};
 
 	/* User EEPROM */
