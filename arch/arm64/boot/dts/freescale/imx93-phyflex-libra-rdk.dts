@@ -20,6 +20,8 @@
 	aliases {
 		mmc0 = &usdhc1;
 		mmc1 = &usdhc2;
+		rtc0 = &i2c_rtc;
+		rtc1 = &bbnsm_rtc;
 	};
 
 	chosen {
@@ -256,6 +258,14 @@
 		ti,rx-internal-delay = <DP83867_RGMIIDCTL_1_50_NS>;
 		ti,tx-internal-delay = <DP83867_RGMIIDCTL_1_75_NS>;
 	};
+};
+
+/* RTC */
+&i2c_rtc {
+	interrupt-parent = <&gpio_expander2>;
+	interrupts = <8 IRQ_TYPE_LEVEL_LOW>;
+	aux-voltage-chargeable = <1>;
+	wakeup-source;
 };
 
 /* FPSC SPI1 */
