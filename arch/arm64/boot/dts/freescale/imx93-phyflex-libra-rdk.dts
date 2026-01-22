@@ -174,11 +174,45 @@
 /* FPSC I2C2 */
 &lpi2c1 {
 	status = "okay";
+
+	gpio_expander1: gpio@21 {
+		compatible = "ti,tcal6416";
+		reg = <0x21>;
+		interrupt-controller;
+		interrupt-parent = <&gpio2>;
+		interrupts = <22 IRQ_TYPE_LEVEL_LOW>;
+		#interrupt-cells = <2>;
+		#gpio-cells = <2>;
+		gpio-controller;
+		gpio-line-names = "VCONN_nFAULT", "CSI1_CTRL1", "CSI1_CTRL3",
+				  "CSI1_CTRL4", "USB-C_nINT/AUDIO_AC",
+				  "CSI2_CTRL1", "CSI2_CTRL3", "CSI2_CTRL4",
+				  "CLK_EN_AV", "W_nDISABLE1", "W_nDISABLE2",
+				  "PCIE1_nWAKE", "PCIE2_nWAKE", "UART1_nWAKE",
+				  "UART1_BT_RS_SEL", "UART1_RS232_485_SEL";
+	};
 };
 
 /* FPSC I2C3 */
 &lpi2c2 {
 	status = "okay";
+
+	gpio_expander2: gpio@21 {
+		compatible = "ti,tcal6416";
+		reg = <0x21>;
+		interrupt-controller;
+		interrupt-parent = <&gpio2>;
+		interrupts = <23 IRQ_TYPE_LEVEL_LOW>;
+		#interrupt-cells = <2>;
+		#gpio-cells = <2>;
+		gpio-controller;
+		gpio-line-names = "CAN1_STBY", "CAN2_STBY", "CAN3_STBY",
+				  "KEY-E_nALERT", "KEY-M_nALERT",
+				  "SDIO_nWAKE", "SDIO_nRESET", "HDMI_EN",
+				  "RTC_nINT", "LVDS1_BL_EN", "SFP_TX_FAULT",
+				  "SFP_TX_DISABLE", "SFP_MOD_ABS", "SFP_RS0",
+				  "SFP_RX_LOSS", "SFP_RS1";
+	};
 
 	led-controller@62 {
 		compatible = "nxp,pca9633";
