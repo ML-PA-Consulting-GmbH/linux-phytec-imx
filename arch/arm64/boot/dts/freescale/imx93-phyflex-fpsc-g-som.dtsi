@@ -253,6 +253,13 @@
 		pagesize = <32>;
 		vcc-supply = <&buck5>;
 	};
+
+	/* RTC */
+	i2c_rtc: rtc@52 {
+		compatible = "microcrystal,rv3028";
+		reg = <0x52>;
+		trickle-resistor-ohms = <3000>;
+	};
 };
 
 /* PXP */
