@@ -28,6 +28,16 @@
 		stdout-path = &lpuart1;
 	};
 
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		power-supply = <&reg_vdd_12v0>;
+		brightness-levels = <0 8 16 32 64 128 255>;
+		default-brightness-level = <8>;
+		num-interpolated-steps = <2>;
+		pwms = <&tpm3 3 66667 0>;
+		status = "disabled";
+	};
+
 	curr_sens_som_in: current-sense-som-in {
 		compatible = "current-sense-amplifier";
 		#io-channel-cells = <0>;
@@ -88,6 +98,13 @@
 				<&curr_sens_vdd_5v0_ext>, <&volt_sens_vdd_5v0_ext>,
 				<&curr_sens_som_in>, <&volt_sens_som_in>,
 				<&curr_sens_som_in_ext>, <&volt_sens_som_in_ext>;
+	};
+
+	panel_lvds1: panel-lvds0 {
+		backlight = <&backlight>;
+		enable-gpios = <&gpio_expander2 9 GPIO_ACTIVE_HIGH>;
+		power-supply = <&reg_vdd_3v3>;
+		status = "disabled";
 	};
 
 	reg_vdd_12v0: regulator-vdd-12v0 {
