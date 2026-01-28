@@ -53,6 +53,35 @@
 		standby-gpios = <&gpio_expander2 1 GPIO_ACTIVE_HIGH>;
 	};
 
+	connector {
+		compatible = "usb-c-connector";
+		label = "USB-C";
+		data-role = "dual";
+		pd-disable;
+		self-powered;
+		vbus-supply = <&reg_vdd_vbus>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+
+				hs_ep: endpoint {
+					remote-endpoint = <&usb3_hs_ep>;
+				};
+			};
+			port@1 {
+				reg = <1>;
+
+				ss_ep: endpoint {
+					remote-endpoint = <&hd3ss3220_in_ep>;
+				};
+			};
+		};
+	};
+
 	osc_mclk: oscillator-mclk {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
@@ -248,6 +277,33 @@
 			function = LED_FUNCTION_STATUS;
 		};
 	};
+
+	usb-typec@47 {
+		compatible = "ti,hd3ss3220";
+		reg = <0x47>;
+		interrupt-parent = <&gpio_expander1>;
+		interrupts = <4 IRQ_TYPE_LEVEL_LOW>;
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+
+				hd3ss3220_in_ep: endpoint {
+					remote-endpoint = <&ss_ep>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+
+				hd3ss3220_out_ep: endpoint {
+					remote-endpoint = <&usb3_role_switch>;
+				};
+			};
+		};
+	};
 };
 
 &lpi2c5 {
@@ -268,6 +324,7 @@
 				  "CLK_EN_AV", "W_nDISABLE1", "W_nDISABLE2",
 				  "PCIE1_nWAKE", "PCIE2_nWAKE", "UART1_nWAKE",
 				  "UART1_BT_RS_SEL", "UART1_RS232_485_SEL";
+
 		vcc-supply = <&reg_vdd_1v8>;
 
 		uart1_bt_rs_sel: bt-rs-hog {
@@ -441,8 +498,39 @@
 	status = "okay";
 };
 
+&usb3 {
+	status = "okay";
+};
+
+&usb3_dwc3 {
+	adp-disable;
+	dr_mode = "otg";
+	hnp-disable;
+	srp-disable;
+	usb-role-switch;
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			usb3_hs_ep: endpoint {
+				remote-endpoint = <&hs_ep>;
+			};
+		};
+		port@1 {
+			reg = <1>;
+			usb3_role_switch: endpoint {
+				remote-endpoint = <&hd3ss3220_out_ep>;
+			};
+		};
+	};
+};
+
 &usb3_phy {
-	vbus-supply = <&reg_vdd_vbus>;
+	status = "okay";
 };
 
 &usbphynop {
