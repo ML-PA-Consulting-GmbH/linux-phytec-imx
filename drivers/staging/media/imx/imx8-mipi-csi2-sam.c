@@ -1256,7 +1256,7 @@ static int mipi_csis_set_frame_interval(struct v4l2_subdev *mipi_sd,
 		return -EINVAL;
 	}
 
-	return v4l2_subdev_call(sen_sd, pad, set_frame_interval, sd_state, interval);
+	return v4l2_subdev_call_state_active(sen_sd, pad, set_frame_interval, interval);
 }
 
 static int mipi_csis_get_frame_interval(struct v4l2_subdev *mipi_sd,
@@ -1273,7 +1273,7 @@ static int mipi_csis_get_frame_interval(struct v4l2_subdev *mipi_sd,
 		return -EINVAL;
 	}
 
-	return v4l2_subdev_call(sen_sd, pad, get_frame_interval, sd_state, interval);
+	return v4l2_subdev_call_state_active(sen_sd, pad, get_frame_interval, interval);
 }
 
 static int mipi_csis_enum_framesizes(struct v4l2_subdev *mipi_sd,
