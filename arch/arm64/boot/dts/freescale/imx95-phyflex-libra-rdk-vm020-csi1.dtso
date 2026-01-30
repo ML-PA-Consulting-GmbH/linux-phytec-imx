@@ -30,6 +30,8 @@
 		reg = <0x10>;
 		clocks = <&vm020_csi1_clk>;
 		clock-names = "ext";
+		orientation = <2>;
+		rotation = <0>;
 
 		port@0 {
 			reg = <0>;

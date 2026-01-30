@@ -30,6 +30,8 @@
 		reg = <0x36>;
 		clocks = <&vm017_csi2_clk>;
 		clock-names = "ext";
+		orientation = <2>;
+		rotation = <0>;
 
 		port@0 {
 			reg = <0>;
