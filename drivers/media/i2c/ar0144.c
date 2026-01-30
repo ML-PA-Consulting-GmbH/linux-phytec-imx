@@ -2825,10 +2825,17 @@ static const struct v4l2_ctrl_config ar0144_ctrls[] = {
 static int ar0144_create_ctrls(struct ar0144 *sensor)
 {
 	struct ar0144_model_data *data = sensor->model->data;
+	struct v4l2_fwnode_device_properties props;
 	struct v4l2_ctrl_config ctrl_cfg;
 	struct v4l2_ctrl *ctrl;
 	int i;
 	int ret;
+
+	ret = v4l2_fwnode_device_parse(sensor->dev, &props);
+	if (ret < 0)
+		return ret;
+
+	v4l2_ctrl_new_fwnode_properties(&sensor->ctrls, &ar0144_ctrl_ops, &props);
 
 	for (i = 0; i < ARRAY_SIZE(ar0144_ctrls); i++) {
 		ctrl_cfg = ar0144_ctrls[i];
