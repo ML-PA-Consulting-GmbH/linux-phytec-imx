@@ -2584,11 +2584,18 @@ static const struct v4l2_ctrl_config ar0521_ctrls[] = {
 
 static int ar0521_create_ctrls(struct ar0521 *sensor)
 {
+	struct v4l2_fwnode_device_properties props;
 	struct v4l2_ctrl_config ctrl_cfg;
 	struct v4l2_ctrl *ctrl;
 	struct ar0521_sensor_limits *limits = &sensor->limits;
 	int i;
 	int ret;
+
+	ret = v4l2_fwnode_device_parse(sensor->subdev.dev, &props);
+	if (ret < 0)
+		return ret;
+
+	v4l2_ctrl_new_fwnode_properties(&sensor->ctrls, &ar0521_ctrl_ops, &props);
 
 	for (i = 0; i < ARRAY_SIZE(ar0521_ctrls); i++) {
 		ctrl_cfg = ar0521_ctrls[i];
