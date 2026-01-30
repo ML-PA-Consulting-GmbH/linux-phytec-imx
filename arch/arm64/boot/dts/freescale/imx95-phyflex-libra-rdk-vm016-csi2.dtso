@@ -30,7 +30,6 @@
 		reg = <0x18>;
 		clocks = <&vm016_csi2_clk>;
 		clock-names = "ext";
-		isp-bus-info = "csi0";
 
 		port@0 {
 			reg = <0>;

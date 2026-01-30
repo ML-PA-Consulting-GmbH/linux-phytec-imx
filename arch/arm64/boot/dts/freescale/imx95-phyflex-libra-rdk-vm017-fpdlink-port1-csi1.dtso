@@ -20,7 +20,6 @@
 		reg = <0x36>;
 		clocks = <&ser_csi1_port1>;
 		clock-names = "ext";
-		isp-bus-info = "csi0";
 
 		assigned-clocks = <&ser_csi1_port1>;
 		assigned-clock-rates = <26666666>;
