@@ -131,15 +131,30 @@
 	};
 };
 
+&gpio1 {
+	gpio-line-names = "", "", "", "", "",
+			  "", "", "", "", "",
+			  "USB2_PWR_EN", "USB2_OC";
+};
+
 /* FPSC GPIO */
 &gpio2 {
 	gpio-line-names = "", "", "", "", "",
 			  "", "", "", "", "",
 			  "", "", "", "", "GPIO1",
 			  "GPIO2", "", "", "", "",
-			  "", "", "GPIO3", "GPIO4";
+			  "", "", "GPIO3", "GPIO4", "USB1_PWR_EN";
 	pinctrl-0 = <&pinctrl_gpio2>;
 	pinctrl-names = "default";
+};
+
+&gpio3 {
+	gpio-line-names = "", "", "", "", "",
+			  "", "", "", "", "",
+			  "", "", "", "", "",
+			  "", "", "", "", "",
+			  "", "", "", "", "",
+			  "", "", "USB1_OC";
 };
 
 /* FPSC I2C2 */
@@ -318,6 +333,18 @@
 /* FPSC PWM2 */
 &tpm4 {
 	pinctrl-0 = <&pinctrl_tpm4>;
+	pinctrl-names = "default";
+};
+
+/* FPSC USB1 */
+&usbotg1 {
+	pinctrl-0 = <&pinctrl_usbc>;
+	pinctrl-names = "default";
+};
+
+/* FPSC USB2 */
+&usbotg1 {
+	pinctrl-0 = <&pinctrl_usb2>;
 	pinctrl-names = "default";
 };
 
@@ -510,6 +537,20 @@
 			MX93_PAD_GPIO_IO04__LPUART6_TX          0x37e
 			MX93_PAD_GPIO_IO06__LPUART6_CTS_B       0x31e
 			MX93_PAD_GPIO_IO07__LPUART6_RTS_B       0x31e
+		>;
+	};
+
+	pinctrl_usbc: usbcgrp {
+		fsl,pins = <
+			MX93_PAD_GPIO_IO24__GPIO2_IO24		0x31e   /* USB1_PWR_EN */
+			MX93_PAD_CCM_CLKO2__GPIO3_IO27		0x31e   /* USB1_OC */
+		>;
+	};
+
+	pinctrl_usb2: usb2grp {
+		fsl,pins = <
+			MX93_PAD_PDM_BIT_STREAM1__GPIO1_IO10	0x31e   /* USB2_PWR_EN */
+			MX93_PAD_SAI1_TXFS__GPIO1_IO11		0x31e   /* USB2_OC */
 		>;
 	};
 

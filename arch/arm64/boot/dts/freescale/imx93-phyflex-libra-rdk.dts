@@ -38,6 +38,36 @@
 		status = "disabled";
 	};
 
+	connector {
+		compatible = "usb-c-connector";
+		label = "USB-C";
+		data-role = "dual";
+		pd-disable;
+		self-powered;
+		vbus-supply = <&reg_vdd_vbus>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+
+				hs_ep: endpoint {
+					remote-endpoint = <&usb3_hs_ep>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+
+				ss_ep: endpoint {
+					remote-endpoint = <&hd3ss3220_in_ep>;
+				};
+			};
+		};
+	};
+
 	curr_sens_som_in: current-sense-som-in {
 		compatible = "current-sense-amplifier";
 		#io-channel-cells = <0>;
@@ -152,6 +182,23 @@
 		regulator-name = "VDD_5V0_REF";
 	};
 
+	reg_vdd_vbus: regulator-vdd-vbus {
+		compatible = "regulator-fixed";
+		enable-active-high;
+		gpio = <&gpio2 24 GPIO_ACTIVE_HIGH>;
+		regulator-name = "VDD_VBUS_C";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+	};
+
+	reg_vdd_vbus_dummy: regulator-vdd-vbus-dummy {
+		compatible = "regulator-fixed";
+		regulator-name = "VDD_VBUS_C_DUMMY";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+	};
+
 	volt_sens_som_in: voltage-sense-som-in {
 		compatible = "voltage-divider";
 		#io-channel-cells = <0>;
@@ -257,6 +304,31 @@
 			function = LED_FUNCTION_STATUS;
 		};
 	};
+
+	usb-typec@47 {
+		compatible = "ti,hd3ss3220";
+		reg = <0x47>;
+		interrupt-parent = <&gpio_expander1>;
+		interrupts = <4 IRQ_TYPE_LEVEL_LOW>;
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				hd3ss3220_in_ep: endpoint {
+					remote-endpoint = <&ss_ep>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				hd3ss3220_out_ep: endpoint {
+					remote-endpoint = <&usb3_role_switch>;
+				};
+			};
+		};
+	};
 };
 
 /* FPSC ENET2 */
@@ -301,6 +373,50 @@
 
 /* Console */
 &lpuart1 {
+	status = "okay";
+};
+
+/* USB */
+&usbphynop1 {
+	vbus-supply = <&reg_vdd_vbus_dummy>;
+};
+
+&usbphynop2 {
+	vbus-supply = <&reg_vdd_5v0>;
+};
+
+&usbotg1 {
+	adp-disable;
+	disable-over-current;
+	dr_mode = "otg";
+	hnp-disable;
+	srp-disable;
+	usb-role-switch;
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			usb3_hs_ep: endpoint {
+				remote-endpoint = <&hs_ep>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+			usb3_role_switch: endpoint {
+				remote-endpoint = <&hd3ss3220_out_ep>;
+			};
+		};
+	};
+};
+
+&usbotg2 {
+	disable-over-current;
+	dr_mode = "host";
 	status = "okay";
 };
 
