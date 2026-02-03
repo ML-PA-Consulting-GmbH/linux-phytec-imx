@@ -697,6 +697,7 @@ imx93-phycore-rpmsg-dtbs += imx93-phyboard-nash.dtb imx93-phyboard-segin.dtb imx
 imx93-phyflex-libra-rdk-lvds-ph128800t006-zhc01-dtbs += imx93-phyflex-libra-rdk.dtb \
 							 imx93-phyflex-libra-rdk-lvds-ph128800t006-zhc01.dtbo
 imx93-phyflex-libra-rdk-peb-av-10-dtbs += imx93-phyflex-libra-rdk.dtb imx93-phyflex-libra-rdk-peb-av-10.dtbo
+imx93-phyflex-libra-rdk-peb-av-12-ph128800t006-zhc01-dtbs += imx93-phyflex-libra-rdk.dtb imx93-phyflex-libra-rdk-peb-av-12-ph128800t006-zhc01.dtbo
 imx93-phyflex-libra-rdk-vm016-dtbs += imx93-phyflex-libra-rdk.dtb imx93-phyflex-libra-rdk-vm016.dtbo
 imx93-phyflex-libra-rdk-vm020-dtbs += imx93-phyflex-libra-rdk.dtb imx93-phyflex-libra-rdk-vm020.dtbo
 dtb-$(CONFIG_ARCH_MXC) += imx91-phyboard-segin-peb-av-02.dtb
@@ -717,6 +718,7 @@ dtb-$(CONFIG_ARCH_MXC) += imx93-phycore-npu.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx93-phycore-rpmsg.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx93-phyflex-libra-rdk-lvds-ph128800t006-zhc01.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx93-phyflex-libra-rdk-peb-av-10.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx93-phyflex-libra-rdk-peb-av-12-ph128800t006-zhc01.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx93-phyflex-libra-rdk-vm016.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx93-phyflex-libra-rdk-vm020.dtb
 
