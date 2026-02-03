@@ -133,6 +133,12 @@
 	};
 };
 
+&gpio1 {
+	gpio-line-names = "", "", "", "", "",
+			  "", "", "", "", "",
+			  "USB2_PWR_EN", "USB2_OC";
+};
+
 /* FPSC GPIO */
 &gpio1 {
 	gpio-line-names = "I2C1_SCL", "I2C1_SDA", "I2C2_SCL", "I2C2_SDA", "",
