@@ -1082,6 +1082,8 @@ imx95-phyflex-fpsc-g-som-temperature-dtbs := imx95-phyflex-libra-rdk.dtb \
                            imx95-phyflex-fpsc-g-som-temperature.dtbo
 imx95-phyflex-libra-rdk-lvds-ph128800t006-zhc01-dtbs := imx95-phyflex-libra-rdk.dtb \
 			   imx95-phyflex-libra-rdk-lvds-ph128800t006-zhc01.dtbo
+imx95-phyflex-libra-rdk-bluetooth-88w8987-dtbs := imx95-phyflex-libra-rdk.dtb \
+			   imx95-phyflex-libra-rdk-bluetooth-88w8987.dtbo
 imx95-phyflex-libra-rdk-neoisp-dtbs := imx95-phyflex-libra-rdk.dtb \
 			   imx95-phyflex-libra-rdk-neoisp.dtbo
 imx95-phyflex-libra-rdk-peb-av-10-dtbs += imx95-phyflex-libra-rdk.dtb imx95-phyflex-libra-rdk-peb-av-10.dtbo
@@ -1129,6 +1131,7 @@ imx95-phyflex-libra-rdk-vm024-csi2-dtbs := imx95-phyflex-libra-rdk.dtb \
 			   imx95-phyflex-libra-rdk-vm024-csi2.dtbo
 dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-fpsc-g-som-temperature.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-bluetooth-88w8987.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-lvds-ph128800t006-zhc01.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-neoisp.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx95-phyflex-libra-rdk-peb-av-10.dtb
