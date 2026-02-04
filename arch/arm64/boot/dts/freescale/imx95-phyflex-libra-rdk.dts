@@ -326,13 +326,6 @@
 				  "UART1_BT_RS_SEL", "UART1_RS232_485_SEL";
 
 		vcc-supply = <&reg_vdd_1v8>;
-
-		uart1_bt_rs_sel: bt-rs-hog {
-			gpios = <14 GPIO_ACTIVE_HIGH>;
-			gpio-hog;
-			line-name = "UART1_BT_RS_SEL";
-			output-low;
-		};
 	};
 
 	/* Factory EEPROM */
