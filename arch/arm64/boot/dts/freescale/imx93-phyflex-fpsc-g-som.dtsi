@@ -343,7 +343,7 @@
 };
 
 /* FPSC USB2 */
-&usbotg1 {
+&usbotg2 {
 	pinctrl-0 = <&pinctrl_usb2>;
 	pinctrl-names = "default";
 };
