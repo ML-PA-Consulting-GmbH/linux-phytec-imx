@@ -167,9 +167,16 @@
 		compatible = "regulator-fixed";
 		enable-active-high;
 		gpio = <&gpio1 11 GPIO_ACTIVE_HIGH>;
-		regulator-name = "VDD_VBUS_C";
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
+		regulator-name = "VDD_VBUS_C";
+	};
+
+	reg_usb3_phy: regulator-usb-vbus {
+		compatible = "regulator-fixed";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-name = "usb3-phy-dummy";
 	};
 
 	sfp_cage: sfp {
@@ -525,6 +532,7 @@
 
 &usb3_phy {
 	status = "okay";
+	vbus-supply = <&reg_usb3_phy>;
 };
 
 &usbphynop {
