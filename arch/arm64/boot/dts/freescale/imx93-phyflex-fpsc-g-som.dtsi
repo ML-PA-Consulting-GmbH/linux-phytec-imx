@@ -17,6 +17,7 @@
 
 	aliases {
 		/* FPSC alias definitions */
+		/delete-property/ ethernet0;
 		ethernet1 = &fec;
 		ethernet2 = &eqos;
 		/delete-property/ i2c0;
@@ -26,8 +27,6 @@
 		pwm1 = &tpm3;
 		pwm2 = &tpm4;
 		/delete-property/ serial0;
-		/delete-property/ serial1;
-		/delete-property/ serial2;
 		serial1 = &lpuart6;
 		serial2 = &lpuart2;
 		serial3 = &lpuart1;
