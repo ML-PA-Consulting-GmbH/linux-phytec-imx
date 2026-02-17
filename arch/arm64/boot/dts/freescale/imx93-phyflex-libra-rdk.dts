@@ -427,6 +427,11 @@
 	status = "okay";
 };
 
+/* FPSC UART1 */
+&lpuart6 {
+	status = "okay";
+};
+
 /* USB */
 &usbphynop1 {
 	vbus-supply = <&reg_vdd_vbus_dummy>;

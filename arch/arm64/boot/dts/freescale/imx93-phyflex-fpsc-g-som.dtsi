@@ -333,13 +333,13 @@
 	pinctrl-0 = <&pinctrl_uart1>;
 };
 
-/* FPSEC UART2 */
+/* FPSC UART2 */
 &lpuart2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart2>;
 };
 
-/* FPSEC UART1 */
+/* FPSC UART1 */
 &lpuart6 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart6>;
