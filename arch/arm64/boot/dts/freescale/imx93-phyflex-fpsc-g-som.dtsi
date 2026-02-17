@@ -284,6 +284,18 @@
 	status = "okay";
 };
 
+/* FPSC CAN1 */
+&flexcan1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_flexcan1>;
+};
+
+/* FPSC CAN2 */
+&flexcan2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_flexcan2>;
+};
+
 /* Frequency scaling */
 &lpm {
 	soc-supply = <&buck1>;
@@ -434,6 +446,20 @@
 	pinctrl_leds: ledsgrp {
 		fsl,pins = <
 			MX93_PAD_CCM_CLKO1__GPIO3_IO26		0x11e
+		>;
+	};
+
+	pinctrl_flexcan1: flexcan1grp {
+		fsl,pins = <
+			MX93_PAD_PDM_BIT_STREAM0__CAN1_RX       0x139e
+			MX93_PAD_PDM_CLK__CAN1_TX               0x1382
+		>;
+	};
+
+	pinctrl_flexcan2: flexcan2grp {
+		fsl,pins = <
+			MX93_PAD_GPIO_IO27__CAN2_RX             0x139e
+			MX93_PAD_GPIO_IO25__CAN2_TX             0x1382
 		>;
 	};
 
