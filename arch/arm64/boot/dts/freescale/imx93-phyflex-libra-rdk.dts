@@ -38,6 +38,20 @@
 		status = "disabled";
 	};
 
+	can_transceiver1: can-phy1 {
+		compatible = "ti,tcan1043";
+		#phy-cells = <0>;
+		max-bitrate = <8000000>;
+		standby-gpios = <&gpio_expander2 0 GPIO_ACTIVE_HIGH>;
+	};
+
+	can_transceiver2: can-phy2 {
+		compatible = "ti,tcan1043";
+		#phy-cells = <0>;
+		max-bitrate = <8000000>;
+		standby-gpios = <&gpio_expander2 1 GPIO_ACTIVE_HIGH>;
+	};
+
 	connector {
 		compatible = "usb-c-connector";
 		label = "USB-C";
@@ -369,6 +383,18 @@
 		vref-supply = <&reg_vdd_5v0_ref>;
 		#io-channel-cells = <1>;
 	};
+};
+
+/* FPSC CAN1 */
+&flexcan1 {
+	phys = <&can_transceiver1>;
+	status = "okay";
+};
+
+/* FPSC CAN2 */
+&flexcan2 {
+	phys = <&can_transceiver2>;
+	status = "okay";
 };
 
 /* Console */
