@@ -371,6 +371,18 @@
 	wakeup-source;
 };
 
+/* FPSC SPI2 */
+&lpspi3 {
+	status = "okay";
+
+	/* TPM */
+	tpm@0 {
+		compatible = "infineon,slb9670", "tcg,tpm_tis-spi";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
+	};
+};
+
 /* FPSC SPI1 */
 &lpspi6 {
 	status = "okay";
@@ -382,6 +394,19 @@
 		spi-max-frequency = <1000000>;
 		vref-supply = <&reg_vdd_5v0_ref>;
 		#io-channel-cells = <1>;
+	};
+};
+
+/* FPSC QSPI */
+&flexspi1 {
+	status = "okay";
+
+	spi_nor: flash@0 {
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <166000000>;
+		spi-rx-bus-width = <4>;
+		spi-tx-bus-width = <4>;
 	};
 };
 
