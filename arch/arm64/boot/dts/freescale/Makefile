@@ -274,6 +274,7 @@ imx8mp-phyboard-pollux-ph128800t006-dtbs += imx8mp-phyboard-pollux-rdk.dtb \
 imx8mp-phyboard-pollux-rdk-no-eth-dtbs += imx8mp-phyboard-pollux-rdk.dtb imx8mp-phycore-no-eth.dtbo
 imx8mp-phyboard-pollux-wlbt-dtbs += imx8mp-phyboard-pollux-rdk.dtb \
        imx8mp-phyboard-pollux-peb-wlbt-05.dtbo
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-mlpa.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-etml1010g3dra.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-peb-av-10.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-peb-av-10-etml1010g3dra.dtb
@@ -582,7 +583,7 @@ dtb-$(CONFIG_ARCH_MXC) += imx91-9x9-qsb-i3c.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx91-phyboard-segin.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx93-phyboard-nash.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx93-phyboard-segin.dtb
-
+dtb-$(CONFIG_ARCH_MXC) += imx93-mlpa.dtb
 imx91-phyboard-segin-peb-av-02-dtbs += imx91-phyboard-segin.dtb imx91-phyboard-segin-peb-av-02.dtbo
 imx91-phyboard-segin-peb-eval-01-dtbs += imx91-phyboard-segin.dtb imx91-phyboard-segin-peb-eval-01.dtbo
 imx91-phyboard-segin-peb-wlbt-05-dtbs += imx91-phyboard-segin.dtb imx91-phyboard-segin-peb-wlbt-05.dtbo

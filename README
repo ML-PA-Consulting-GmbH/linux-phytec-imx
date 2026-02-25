@@ -1,3 +1,9 @@
+ML-PA
+============
+This is a branch with the based on the commit at tag v6.12.20-2.0.0-phy6 with the mlpa patch set applied and added to source control.
+Use the tag v6.12.20-mlpaN where N is the highest number to make new tags for use building the kernel for imx based ml-pa devices.
+
+
 Linux kernel
 ============
 
