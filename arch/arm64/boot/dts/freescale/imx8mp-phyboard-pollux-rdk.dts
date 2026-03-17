@@ -205,14 +205,6 @@
 };
 
 /* HDMI */
-&irqsteer_hdmi {
-	status = "okay";
-};
-
-&hdmi_blk_ctrl {
-	status = "okay";
-};
-
 &hdmi_pavi {
 	status = "okay";
 };
