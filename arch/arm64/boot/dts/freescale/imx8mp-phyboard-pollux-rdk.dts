@@ -129,6 +129,13 @@
 		regulator-max-microvolt = <3300000>;
 	};
 
+	sound-hdmi {
+		compatible = "fsl,imx-audio-hdmi";
+		model = "audio-hdmi";
+		audio-cpu = <&aud2htx>;
+		hdmi-out;
+	};
+
 	thermal-zones {
 		soc-thermal {
 			trips {
@@ -147,6 +154,10 @@
 			};
 		};
 	};
+};
+
+&aud2htx {
+	status = "okay";
 };
 
 /* TPM */
