@@ -316,6 +316,7 @@ csi1_i2c: &i2c3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pcie0>;
 	reset-gpio = <&gpio1 8 GPIO_ACTIVE_LOW>;
+	host-wake-gpio = <&gpio1 10 GPIO_ACTIVE_LOW>;
 	vpcie-supply = <&reg_vcc_3v3_sw>;
 	status = "okay";
 };
