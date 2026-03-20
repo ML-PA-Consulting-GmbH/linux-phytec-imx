@@ -43,7 +43,7 @@
 };
 
 &panel_lvds0 {
-	compatible = "edt,etml1010g3dra";
+	compatible = "powertip,ph128800t006-zhc01";
 	status = "okay";
 };
 
