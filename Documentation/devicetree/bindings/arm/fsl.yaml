@@ -1128,6 +1128,13 @@ properties:
           - const: phytec,imx8mp-phycore-fpsc # phyCORE-i.MX 8M Plus FPSC
           - const: fsl,imx8mp
 
+      - description: PHYTEC phyFLEX-i.MX8MP FPSC-Gamma SoM based boards
+        items:
+          - enum:
+              - phytec,imx8mp-phyflex-libra-rdk  # phyFLEX-i.MX 8M Plus Libra RDK
+          - const: phytec,imx8mp-phyflex-fpsc-g # phyFLEX-i.MX 8M Plus FPSC-Gamma SoM
+          - const: fsl,imx8mp
+
       - description: PHYTEC phyCORE-i.MX8MP SoM based boards
         items:
           - const: phytec,imx8mp-phyboard-pollux-rdk # phyBOARD-Pollux RDK
