@@ -151,9 +151,18 @@
 	clock-frequency = <400000>;
 	status = "okay";
 
+	/* Factory EEPROM */
 	eeprom@51 {
 		compatible = "atmel,24c02";
 		reg = <0x51>;
+		pagesize = <16>;
+		vcc-supply = <&reg_vdd_1v8>;
+	};
+
+	/* User EEPROM */
+	eeprom@52 {
+		compatible = "atmel,24c02";
+		reg = <0x52>;
 		pagesize = <16>;
 		vcc-supply = <&reg_vdd_1v8>;
 	};
