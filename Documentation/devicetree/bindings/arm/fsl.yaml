@@ -1121,13 +1121,6 @@ properties:
           - const: engicam,icore-mx8mp             # i.MX8MP Engicam i.Core MX8M Plus SoM
           - const: fsl,imx8mp
 
-      - description: PHYTEC phyCORE-i.MX8MP FPSC based boards
-        items:
-          - enum:
-              - phytec,imx8mp-libra-rdk-fpsc  # i.MX 8M Plus Libra RDK
-          - const: phytec,imx8mp-phycore-fpsc # phyCORE-i.MX 8M Plus FPSC
-          - const: fsl,imx8mp
-
       - description: PHYTEC phyFLEX-i.MX8MP FPSC-Gamma SoM based boards
         items:
           - enum:
