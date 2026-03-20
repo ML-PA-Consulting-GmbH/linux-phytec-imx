@@ -309,7 +309,8 @@
 
 &usb3_1 {
 	fsl,permanently-attached;
-	fsl,disable-port-power-control;
+	fsl,over-current-active-low;
+	fsl,power-active-high;
 	status = "okay";
 };
 
