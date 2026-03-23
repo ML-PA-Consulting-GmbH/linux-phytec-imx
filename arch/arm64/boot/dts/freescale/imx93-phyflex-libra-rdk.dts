@@ -251,6 +251,18 @@
 	status = "okay";
 };
 
+&gpio1 {
+	gpio-line-names = "I2C2_SCL", "I2C2_SDA", "I2C3_SCL", "I2C3_SDA";
+};
+
+&gpio2 {
+	gpio-line-names = "SPI6_CS", "", "", "", "",
+			  "", "", "", "SPI3_CS", "",
+			  "", "", "", "", "CSI1_CTRL2",
+			  "FAN_FB", "", "", "", "",
+			  "", "", "nINT_EXP1", "nINT_EXP2", "USB1_PWR_EN";
+};
+
 /* FPSC I2C2 */
 &lpi2c1 {
 	status = "okay";
