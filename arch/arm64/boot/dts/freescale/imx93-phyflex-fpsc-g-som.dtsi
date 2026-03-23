@@ -133,30 +133,43 @@
 	};
 };
 
+/* FPSC GPIO */
 &gpio1 {
-	gpio-line-names = "", "", "", "", "",
+	gpio-line-names = "I2C1_SCL", "I2C1_SDA", "I2C2_SCL", "I2C2_SDA", "",
 			  "", "", "", "", "",
-			  "USB2_PWR_EN", "USB2_OC";
+			  "USB2_PWR_EN", "USB2_nOC", "", "", "PMIC_IRQ_B";
 };
 
 /* FPSC GPIO */
 &gpio2 {
-	gpio-line-names = "", "", "", "", "",
-			  "", "", "", "", "",
+	gpio-line-names = "SPI6_CS", "", "", "", "",
+			  "", "", "", "SPI3_CS", "",
 			  "", "", "", "", "GPIO1",
 			  "GPIO2", "", "", "", "",
-			  "", "", "GPIO3", "GPIO4", "USB1_PWR_EN";
+			  "", "", "GPIO3", "GPIO4", "USB1_PWR_EN",
+			  "", "", "", "I2C3_SDA", "I2C3_SCL";
 	pinctrl-0 = <&pinctrl_gpio2>;
 	pinctrl-names = "default";
 };
 
+/* FPSC GPIO */
 &gpio3 {
-	gpio-line-names = "", "", "", "", "",
+	gpio-line-names = "SD2_CD_B", "", "", "", "",
+			  "", "", "SD2_nRESET", "", "",
+			  "", "", "", "", "",
+			  "", "", "", "", "",
+			  "", "", "", "", "",
+			  "", "Heartbeat_LED", "USB1_nOC";
+};
+
+/* FPSC GPIO */
+&gpio4 {
+	gpio-line-names = "", "RGMII2_nINT", "", "", "",
 			  "", "", "", "", "",
 			  "", "", "", "", "",
 			  "", "", "", "", "",
 			  "", "", "", "", "",
-			  "", "", "USB1_OC";
+			  "", "", "USB1_OC", "ENET2_nINT", "SD1_RST_B";
 };
 
 /* FPSC I2C2 */
