@@ -35,7 +35,6 @@ struct esp_hci_work {
  * @next_rx_seq: expected seq no of the next frame coming in.
  * @is_open: device is up and ready
  * @wait_open: signals when the device is booted
- * @close_work: synchronize device close with the device wq
  */
 struct esp_hci_dev {
 	/* The following fields are set up by the transport layer before calling
@@ -81,7 +80,6 @@ struct esp_hci_dev {
 
 	bool is_open;
 	struct wait_queue_head wait_open;
-	struct esp_hci_work close_work;
 };
 
 /**
