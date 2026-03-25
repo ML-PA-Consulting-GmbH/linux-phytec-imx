@@ -27,15 +27,6 @@
 		stdout-path = &lpuart1;
 	};
 
-	flexcan1_tc: can-phy0 {
-		compatible = "ti,tcan1043";
-		#phy-cells = <0>;
-		max-bitrate = <1000000>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_flexcan1_tc>;
-		enable-gpios = <&gpio4 16 GPIO_ACTIVE_HIGH>;
-	};
-
 	reg_usb_otg1_vbus: regulator-usb-otg1-vbus {
 		compatible = "regulator-fixed";
 		regulator-name = "USB_OTG1_VBUS";
@@ -92,10 +83,7 @@
 
 /* CAN */
 &flexcan1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_flexcan1>;
-	phys = <&flexcan1_tc>;
-	status = "okay";
+	status = "disabled";
 };
 
 /* I2C2 */
@@ -163,49 +151,124 @@
 	status = "okay";
 };
 
+&flexcan2 {
+	status = "disabled";
+};
+
+&lpuart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart2>;
+	status = "okay";
+	/delete-property/ dmas;
+	/delete-property/ dma-names;
+};
+
+&lpuart3 {
+	status = "okay";
+};
+
+&lpuart4 {
+	status = "okay";
+};
+
+&lpuart6 {
+	status = "okay";
+};
+
+/* RS-232/RS-485 */
+&lpuart7 {
+	status = "okay";
+};
+
+&lpuart8 {
+	status = "okay";
+};
+
+
+&lpuart5 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart5>;
+	status = "okay";
+
+	bluetooth {
+		compatible = "espressif,esp32c6-uart";
+		max-speed = <2000000>;
+	};
+};
+
 /* SPI6 */
 &lpspi6 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpspi6>;
 	cs-gpios = <&gpio2 0 GPIO_ACTIVE_LOW>;
 	status = "okay";
-};
 
+};
 
 &lpspi1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpspi1>;
-	/* cs-gpios = <&gpio1 11 0>; */
-	cs-gpios = <&gpio1 11 0>; /*, <&gpio4 10 GPIO_ACTIVE_LOW>; */
+	cs-gpios = <&gpio1 11 0
+	            &gpio1 9 GPIO_ACTIVE_LOW>; 	 
 	status = "okay";
+	num-chipselects = <2>;
 	/* TPM */
 	tpm0: tpm@0 {
-        compatible = "tcg,tpm_tis-spi","infineon,slb9670";
-        reg = <0>;
-        spi-max-frequency = <10000000>;
-        interrupts = <29 IRQ_TYPE_LEVEL_LOW>;
-        interrupt-parent = <&gpio4>;
-        pinctrl-names = "default";
-        pinctrl-0 = <&pinctrl_tpm>;
+		compatible = "tcg,tpm_tis-spi","infineon,slb9670";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
+		interrupts = <29 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-parent = <&gpio4>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_tpm>;
+		status = "okay";
+	};
+	/* ESP32-C6 on CS1. */
+	esp32_c6: esp32_c6@1 {
         status = "okay";
-    };
+		compatible = "esp,hosted";
+		reg = <1>;
+		spi-max-frequency = <5000000>;
+		hs-gpio =  <&gpio3 24 GPIO_ACTIVE_HIGH>;
+		dr-gpio =  <&gpio3 25 GPIO_ACTIVE_HIGH>; 
+		pwr-gpio = <&gpio2  8 GPIO_ACTIVE_HIGH>; 
+		rst-gpio = <&gpio2  9 GPIO_ACTIVE_LOW>;
+	};
 };
 
 &iomuxc {
-
 	pinctrl_lpspi6: lpspi6grp {
 		fsl,pins = <
-			/* MX93_PAD_GPIO_IO08__GPIO2_IO08		0x51e
-			MX93_PAD_GPIO_IO09__GPIO2_IO09		0x51e
-			MX93_PAD_GPIO_IO10__GPIO2_IO10		0x51e
-			MX93_PAD_SD3_DATA2__GPIO3_IO24		0x51e
-			MX93_PAD_SD3_DATA3__GPIO3_IO25		0x51e */
 			MX93_PAD_GPIO_IO00__GPIO2_IO00		0x386
 			MX93_PAD_GPIO_IO01__LPSPI6_SIN		0x3fe
 			MX93_PAD_GPIO_IO02__LPSPI6_SOUT		0x386
 			MX93_PAD_GPIO_IO03__LPSPI6_SCK		0x386
+		>;
+	};
+
+	pinctrl_uart5: uart5grp {
+		fsl,pins = <
+			MX93_PAD_DAP_TDO_TRACESWO__LPUART5_TX	0x31e
+			MX93_PAD_DAP_TDI__LPUART5_RX		0x31e
+			MX93_PAD_DAP_TCLK_SWCLK__LPUART5_CTS_B	0x31e
+			MX93_PAD_DAP_TMS_SWDIO__LPUART5_RTS_B	0x31e
+		>;
+	};
+
+	pinctrl_lpspi1: lpspi1grp {
+		fsl,pins = <
+			MX93_PAD_GPIO_IO08__GPIO2_IO08			0x51e
+			MX93_PAD_SAI1_RXD0__LPSPI1_SOUT			0x51e
+			MX93_PAD_SAI1_TXC__LPSPI1_SIN			0x51e
+			MX93_PAD_SAI1_TXD0__LPSPI1_SCK			0x51e
+		>;
+	};
+
+	pinctrl_tpm: tpmgrp {
+		fsl,pins = <
+			MX93_PAD_CCM_CLKO4__GPIO4_IO29		0x57e
 		>;
 	};
 
@@ -224,7 +287,16 @@
 			MX93_PAD_CCM_CLKO4__GPIO4_IO29		0x57e
 		>;
 	};
-
+	/* This doesn't seem to be needed. Perhaps the GPIO initialization in 
+         * the driver is sufficient. */
+	// pinctrl_esp32c6: esp32c6grp {
+	// 	fsl,pins = <
+	// 		MX93_PAD_GPIO_IO09__GPIO2_IO09			0x57e  /* ESP.RES */
+	// 		MX93_PAD_GPIO_IO09__GPIO2_IO09			0x57e  /* ESP.PWR */
+	// 		MX93_PAD_SD3_DATA2__GPIO3_IO24			0x57e  /* ESP.HANDSHAKE */
+	// 		MX93_PAD_SD3_DATA3__GPIO3_IO25			0x57e  /* ESP.DATRDY */
+	// 	>;
+	// };
 	pinctrl_eqos: eqosgrp {
 		fsl,pins = <
 			MX93_PAD_ENET1_TD2__CCM_ENET_QOS_CLOCK_GENERATE_REF_CLK	0x4000050e
@@ -237,19 +309,13 @@
 			MX93_PAD_ENET1_RXC__ENET_QOS_RX_ER		0x57e
 		>;
 	};
-
-	pinctrl_flexcan1: flexcan1grp {
+	pinctrl_uart2: uart2grp {
 		fsl,pins = <
-			MX93_PAD_PDM_BIT_STREAM0__CAN1_RX	0x139e
-			MX93_PAD_PDM_CLK__CAN1_TX		0x139e
+			MX93_PAD_UART2_RXD__LPUART2_RX			0x31e
+			MX93_PAD_UART2_TXD__LPUART2_TX			0x30e
 		>;
 	};
 
-	pinctrl_flexcan1_tc: flexcan1tcgrp {
-		fsl,pins = <
-			MX93_PAD_ENET2_TD3__GPIO4_IO16		0x31e
-		>;
-	};
 
 	pinctrl_lpi2c2: lpi2c2grp {
 		fsl,pins = <
