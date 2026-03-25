@@ -12,7 +12,8 @@
  *
  * The driver features a work queue on which any device state change and transfer
  * is serialized. Care should be taken not to dead-lock with the HCI core
- * work queues.
+ * work queues. Generally, HCI calls are non-blocking, but for example
+ * hci_unregister_dev() will sync the HCI work queues.
  */
 #include <linux/module.h>
 #include <linux/gpio/consumer.h>
@@ -24,6 +25,8 @@
 
 #define ESP_IF_TYPE_HCI_HCI 2
 
+/* Versioning for the framing between host and controller. The major versions
+ * have to match. */
 #define ESP_HCI_API_VER_MAJOR 2
 #define ESP_HCI_API_VER_MINOR 0
 #define ESP_HCI_API_VER_PATCH 1
@@ -117,10 +120,7 @@ static void _unregister_hci_dev(struct esp_hci_dev *esp_hci_dev)
 static int esp_hci_open(struct hci_dev *hdev)
 {
 	struct esp_hci_dev *esp_hci_dev = hci_get_drvdata(hdev);
-	dev_info(esp_hci_dev->transport_dev, "HCI: open\n");
-
-	flush_work(&esp_hci_dev->close_work.work);
-
+	dev_info(esp_hci_dev->transport_dev, "HCI: opening...\n");
 	/* If power pin is not supported, trigger a reset to put the controller
 	 * in a clean state. Otherwise this won't do anything, as the dev should
 	 * be off.*/
@@ -138,7 +138,7 @@ static int esp_hci_open(struct hci_dev *hdev)
 		return -ETIMEDOUT;
 	}
 
-	dev_info(esp_hci_dev->transport_dev, "HCI: opened\n");
+	dev_info(esp_hci_dev->transport_dev, "HCI: opened!\n");
 
 	return 0;
 }
@@ -149,6 +149,7 @@ static int esp_hci_flush(struct hci_dev *hdev)
 	dev_info(esp_hci_dev->transport_dev, "HCI: flush\n");
 
 	esp_hci_dev->write_packet(esp_hci_dev, NULL);
+	flush_workqueue(esp_hci_dev->wq);
 
 	return 0;
 }
@@ -168,9 +169,16 @@ static void esp_hci_close_work(struct work_struct *work)
 static int esp_hci_close(struct hci_dev *hdev)
 {
 	struct esp_hci_dev *esp_hci_dev = hci_get_drvdata(hdev);
-	dev_info(esp_hci_dev->transport_dev, "HCI: close\n");
+	dev_info(esp_hci_dev->transport_dev, "HCI: closing...\n");
 
-	queue_work(esp_hci_dev->wq, &esp_hci_dev->close_work.work);
+	struct esp_hci_work close_work;
+	INIT_WORK_ONSTACK(&close_work.work, esp_hci_close_work);
+	close_work.esp_hci_dev = esp_hci_dev;
+
+	queue_work(esp_hci_dev->wq, &close_work.work);
+	flush_work(&close_work.work);
+
+	dev_info(esp_hci_dev->transport_dev, "HCI: closed!\n");
 
 	return 0;
 }
@@ -252,9 +260,6 @@ int esp_hci_probe(struct esp_hci_dev *esp_hci_dev)
 	}
 	esp_hci_dev->rst_gpio = rst_gpio;
 
-	INIT_WORK(&esp_hci_dev->close_work.work, esp_hci_close_work);
-	esp_hci_dev->close_work.esp_hci_dev = esp_hci_dev;
-
 	struct gpio_desc *pwr_gpio = devm_gpiod_get(dev, "pwr", GPIOD_OUT_HIGH);
 	if (IS_ERR(pwr_gpio)) {
 		dev_warn(dev,
@@ -301,24 +306,12 @@ struct esp_hci_remove_work {
 	struct esp_hci_dev *esp_hci_dev;
 };
 
-static void _unregister_work_fn(struct work_struct *work)
-{
-	struct esp_hci_dev *esp_hci_dev =
-		((struct esp_hci_work *)work)->esp_hci_dev;
-	esp_hci_dev->is_open = false;
-	/* Will sync the HCI work queues, including any pending tx work. */
-	_unregister_hci_dev(esp_hci_dev);
-}
-
 EXPORT_SYMBOL(esp_hci_remove);
 void esp_hci_remove(struct esp_hci_dev *esp_hci_dev)
 {
-	struct esp_hci_work unreg_work;
-	INIT_WORK_ONSTACK(&unreg_work.work, _unregister_work_fn);
-	unreg_work.esp_hci_dev = esp_hci_dev;
-
-	queue_work(esp_hci_dev->wq, &unreg_work.work);
-	/* will sync any pending work */
+	_unregister_hci_dev(esp_hci_dev);
+	/* Will sync the queue, including any pending close() issued by the HCI
+	 * core. */
 	destroy_workqueue(esp_hci_dev->wq);
 
 	hci_free_dev(esp_hci_dev->hci_dev);
@@ -359,7 +352,7 @@ static int process_event_esp_bootup(struct esp_hci_dev *esp_hci_dev,
 {
 	struct device *dev = esp_hci_dev->transport_dev;
 	/* No need to register a reset if the dev wasn't on, e.g. on probe. */
-	if (hdev_is_powered(esp_hci_dev->hci_dev)) {
+	if (esp_hci_dev->is_open) {
 		dev_warn_ratelimited(dev, "HCI: detected controller reset!\n");
 		hci_reset_dev(esp_hci_dev->hci_dev);
 	}
