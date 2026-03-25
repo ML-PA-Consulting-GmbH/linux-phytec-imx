@@ -7,7 +7,10 @@
  */
 #pragma once
 
+<<<<<<< HEAD
 #include "linux/cdev.h"
+=======
+>>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
 #include <linux/device.h>
 #include <linux/skbuff.h>
 #include <linux/wait.h>
@@ -18,6 +21,7 @@
 struct esp_hci_work {
 	struct work_struct work;
 	struct esp_hci_dev *esp_hci_dev;
+<<<<<<< HEAD
 	int res;
 };
 
@@ -58,6 +62,10 @@ typedef enum {
 	ESP_HCI_DRV_STATE_REG = 2,
 } esp_hci_drv_state_t;
 
+=======
+};
+
+>>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
 /**
  * struct esp_hci_dev - ESP HCI device structure
  *
@@ -65,6 +73,7 @@ typedef enum {
  *
  * @type: Transport layer type. Search for "HCI bus types" is hci.h.
  * @transport_dev: Underlying kernel device associated with the transport.
+<<<<<<< HEAD
  * @tx_queue: TX skb queue.
  * @tx_paused: TX skb was full, now waiting to be drained.
  * @next_tx_seq: seq no of the next frame going out.
@@ -87,6 +96,18 @@ typedef enum {
  * @framing_ver: transport framing version, set when device boots
  * @fw_ver_lock: Mutex for the firmware/framing versions.
  * @ver_str: storage for the version string, read by the firmware character dev
+=======
+ * @pwr_gpio: Controller reset.
+ * @pwr_gpio: Controller power supply control. May be NULL if missing.
+ * @caps: Capabilities flags.
+ * @hci_dev: Kernel HCI core device.
+ * @wq: Workqueue for serializing any state change.
+ * @next_tx_seq: seq no of the next frame going out.
+ * @next_rx_seq: expected seq no of the next frame coming in.
+ * @is_open: device is up and ready
+ * @wait_open: signals when the device is booted
+ * @close_work: synchronize device close with the device wq
+>>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
  */
 struct esp_hci_dev {
 	/* The following fields are set up by the transport layer before calling
@@ -94,9 +115,19 @@ struct esp_hci_dev {
 
 	__u8 type;
 	/**
+<<<<<<< HEAD
 	 * @tx_ready: Signal the transport layer that the TX queue is not empty.
 	 */
 	void (*tx_ready)(struct esp_hci_dev *esp_hci_dev);
+=======
+	 * @write_packet: Send HCI packet to the controller.
+	 * SHALL NOT free @skb on error. Purges TX queue if @skb == NULL.
+	 *
+	 * Returns 0 on success, negative error otherwise.
+	 */
+	int (*write_packet)(struct esp_hci_dev *esp_hci_dev,
+			    struct sk_buff *skb);
+>>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
 	/**
 	 * @write_packet: Expand TX skb as required by the transport layer..
 	 *
@@ -115,6 +146,7 @@ struct esp_hci_dev {
 
 	/* The following fields are set by the ESP HCI generic implementation. */
 
+<<<<<<< HEAD
 	struct sk_buff_head tx_queue;
 	bool tx_paused;
 	uint8_t next_tx_seq;
@@ -147,6 +179,22 @@ struct esp_hci_dev {
 	struct mutex fw_ver_lock;
 
 	char ver_str[80];
+=======
+	struct gpio_desc *rst_gpio;
+	struct gpio_desc *pwr_gpio;
+	unsigned caps;
+	struct hci_dev *hci_dev;
+	struct workqueue_struct *wq;
+
+	/* Used to track transport layer frame losses. */
+
+	uint8_t next_tx_seq;
+	uint8_t next_rx_seq;
+
+	bool is_open;
+	struct wait_queue_head wait_open;
+	struct esp_hci_work close_work;
+>>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
 };
 
 /**
@@ -212,6 +260,7 @@ void esp_hci_remove(struct esp_hci_dev *esp_hci_dev);
  */
 void esp_hci_rcv_pkt(struct esp_hci_dev *esp_hci_dev, struct sk_buff *pkt);
 
+<<<<<<< HEAD
 /**
  * esp_hci_pop_tx_packet - Pop a TX packet.
  *
@@ -221,4 +270,6 @@ void esp_hci_rcv_pkt(struct esp_hci_dev *esp_hci_dev, struct sk_buff *pkt);
  */
 struct sk_buff *esp_hci_pop_tx_packet(struct esp_hci_dev *esp_hci_dev);
 
+=======
+>>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
 DEFINE_FREE(sk_buff, struct sk_buff *, if (_T) kfree_skb(_T));
