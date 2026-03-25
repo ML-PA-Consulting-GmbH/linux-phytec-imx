@@ -126,6 +126,13 @@
 	status = "okay";
 };
 
+&lpuart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart2>;
+	status = "okay";
+	/delete-property/ dmas;
+	/delete-property/ dma-names;
+};
 
 /* USB  */
 &usbphynop1 {
@@ -177,20 +184,32 @@
 	#size-cells = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpspi1>;
-	/* cs-gpios = <&gpio1 11 0>; */
-	cs-gpios = <&gpio1 11 0>; /*, <&gpio4 10 GPIO_ACTIVE_LOW>; */
+	cs-gpios =	<&gpio1 11 0 
+			&gpio1 9 GPIO_ACTIVE_LOW>; 	 
 	status = "okay";
+	num-chipselects = <2>;
 	/* TPM */
 	tpm0: tpm@0 {
-        compatible = "tcg,tpm_tis-spi","infineon,slb9670";
-        reg = <0>;
-        spi-max-frequency = <10000000>;
-        interrupts = <29 IRQ_TYPE_LEVEL_LOW>;
-        interrupt-parent = <&gpio4>;
-        pinctrl-names = "default";
-        pinctrl-0 = <&pinctrl_tpm>;
-        status = "okay";
-    };
+		compatible = "tcg,tpm_tis-spi","infineon,slb9670";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
+		interrupts = <29 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-parent = <&gpio4>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_tpm>;
+		status = "okay";
+	};
+	/* ESP32-C6 on CS1. */
+	esp32_c6: esp32_c6@1 {
+                status = "okay";
+		compatible = "esp,hosted";
+		reg = <1>;
+		spi-max-frequency = <5000000>;
+		hs-gpio =  <&gpio3 24 GPIO_ACTIVE_HIGH>;
+		dr-gpio =  <&gpio3 25 GPIO_ACTIVE_HIGH>; 
+		pwr-gpio = <&gpio2  8 GPIO_ACTIVE_HIGH>; 
+		rst-gpio = <&gpio2  9 GPIO_ACTIVE_LOW>;
+	};
 };
 
 &iomuxc {
@@ -281,6 +300,13 @@
 		fsl,pins = <
 			MX93_PAD_UART1_RXD__LPUART1_RX		0x31e
 			MX93_PAD_UART1_TXD__LPUART1_TX		0x30e
+		>;
+	};
+
+	pinctrl_uart2: uart2grp {
+		fsl,pins = <
+			MX93_PAD_UART2_RXD__LPUART2_RX			0x31e
+			MX93_PAD_UART2_TXD__LPUART2_TX			0x30e
 		>;
 	};
 
