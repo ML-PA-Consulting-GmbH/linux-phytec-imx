@@ -29,6 +29,7 @@
 		dr-gpio =  <&gpio3 25 GPIO_ACTIVE_HIGH>; 
 		pwr-gpio = <&gpio2  8 GPIO_ACTIVE_HIGH>; 
 		rst-gpio = <&gpio2  9 GPIO_ACTIVE_LOW>;
+		label = "hmi";
 	};
 };
 

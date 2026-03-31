@@ -15,8 +15,10 @@
  * work queues. Generally, HCI calls are non-blocking, but for example
  * hci_unregister_dev() will sync the HCI work queues.
  */
+#include <linux/of.h>
 #include <linux/module.h>
 #include <linux/gpio/consumer.h>
+#include <linux/fs.h>
 #include <linux/mod_devicetable.h>
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
@@ -26,10 +28,20 @@
 #define ESP_IF_TYPE_HCI_HCI 2
 
 /* Versioning for the framing between host and controller. The major versions
- * have to match. */
-#define ESP_HCI_API_VER_MAJOR 2
-#define ESP_HCI_API_VER_MINOR 0
-#define ESP_HCI_API_VER_PATCH 1
+ * MUST match. */
+#define ESP_HCI_FRAMING_VER_MAJOR 2
+#define ESP_HCI_FRAMING_VER_MINOR 1
+#define ESP_HCI_FRAMING_VER_PATCH 0
+
+/* Only for fw dev management, file operations are serialized with dev-specific
+ * lock. */
+DEFINE_MUTEX(_fwdev_mgmt_lock);
+
+#define ESP_HCI_MINOR_CNT 4
+
+static unsigned long _fwdev_map;
+static unsigned _fwdev_major;
+static struct class *_fwdev_class;
 
 enum ESP_CAPABILITIES {
 	ESP_BLE_ONLY_SUPPORT = (1 << 3),
@@ -44,9 +56,10 @@ enum ESP_INTERFACE_TYPE {
 
 enum ESP_BOOTUP_TAG_TYPE {
 	ESP_BOOTUP_CAPABILITY = 0,
-	ESP_BOOTUP_FW_DATA,
+	ESP_BOOTUP_FRAMING_VER,
 	ESP_BOOTUP_SPI_CLK_MHZ,
 	ESP_BOOTUP_FIRMWARE_CHIP_ID,
+	ESP_BOOTUP_FW_VER,
 };
 
 enum ESP_INTERNAL_MSG {
@@ -72,11 +85,11 @@ struct esp_cap_tag {
 	uint8_t data[0];
 } __packed;
 
-struct esp_hci_api_ver {
-	uint8_t major;
-	uint8_t minor;
-	uint8_t patch;
-} __packed;
+static void _state_change(struct esp_hci_dev *esp_hci_dev, esp_hci_state_t new)
+{
+	esp_hci_dev->state = new;
+	wake_up_all(&esp_hci_dev->state_change);
+}
 
 static void __maybe_unused _debug_header(struct esp_payload_header const *hdr,
 					 char const *dir)
@@ -117,10 +130,17 @@ static void _unregister_hci_dev(struct esp_hci_dev *esp_hci_dev)
 	dev_info(esp_hci_dev->transport_dev, "HCI: unregistered HCI dev\n");
 }
 
-static int esp_hci_open(struct hci_dev *hdev)
+static void esp_hci_open_work(struct work_struct *work)
 {
-	struct esp_hci_dev *esp_hci_dev = hci_get_drvdata(hdev);
-	dev_info(esp_hci_dev->transport_dev, "HCI: opening...\n");
+	struct esp_hci_dev *esp_hci_dev = ((struct esp_hci_work *)work)->esp_hci_dev;
+	gpiod_set_value(esp_hci_dev->pwr_gpio, 0);
+
+	/* Don't mess with the device if it's upgrading the firmware. */
+	if (esp_hci_dev->state == ESP_HCI_STATE_FWUPD) {
+		dev_warn(esp_hci_dev->transport_dev, "HCI: open: cannot reset during update\n");
+		return;
+	}
+
 	/* If power pin is not supported, trigger a reset to put the controller
 	 * in a clean state. Otherwise this won't do anything, as the dev should
 	 * be off.*/
@@ -130,11 +150,51 @@ static int esp_hci_open(struct hci_dev *hdev)
 
 	gpiod_set_value(esp_hci_dev->pwr_gpio, 1);
 
-	int ret = wait_event_interruptible_timeout(esp_hci_dev->wait_open,
-						   esp_hci_dev->is_open,
+	_state_change(esp_hci_dev, ESP_HCI_STATE_OPENING);
+}
+
+static void esp_hci_close_work(struct work_struct *work)
+{
+	struct esp_hci_dev *esp_hci_dev = ((struct esp_hci_work *)work)->esp_hci_dev;
+
+	if (esp_hci_dev->state == ESP_HCI_STATE_FWUPD) {
+		dev_warn(esp_hci_dev->transport_dev, "HCI: cannot close dev during update\n");
+		((struct esp_hci_work *)work)->res = -EAGAIN;
+		return;
+	}
+
+	gpiod_set_value(esp_hci_dev->pwr_gpio, 0);
+
+	msleep(10);
+
+	_state_change(esp_hci_dev, ESP_HCI_STATE_CLOSED);
+
+	esp_hci_dev->next_rx_seq = 0;
+	esp_hci_dev->next_tx_seq = 0;
+}
+
+static int esp_hci_open(struct hci_dev *hdev)
+{
+	struct esp_hci_dev *esp_hci_dev = hci_get_drvdata(hdev);
+	dev_info(esp_hci_dev->transport_dev, "HCI: opening...\n");
+
+	struct esp_hci_work hci_work;
+	INIT_WORK_ONSTACK(&hci_work.work, esp_hci_open_work);
+	hci_work.esp_hci_dev = esp_hci_dev;
+
+	queue_work(esp_hci_dev->wq, &hci_work.work);
+	flush_work(&hci_work.work);
+
+	int ret = wait_event_interruptible_timeout(esp_hci_dev->state_change,
+						   esp_hci_dev->state == ESP_HCI_STATE_OPEN,
 						   msecs_to_jiffies(5000));
 	if (ret < 1) {
 		dev_err(esp_hci_dev->transport_dev, "HCI: open failed\n");
+
+		INIT_WORK_ONSTACK(&hci_work.work, esp_hci_close_work);
+		queue_work(esp_hci_dev->wq, &hci_work.work);
+		flush_work(&hci_work.work);
+
 		return -ETIMEDOUT;
 	}
 
@@ -154,33 +214,22 @@ static int esp_hci_flush(struct hci_dev *hdev)
 	return 0;
 }
 
-static void esp_hci_close_work(struct work_struct *work)
-{
-	struct esp_hci_dev *esp_hci_dev = ((struct esp_hci_work *)work)->esp_hci_dev;
-	gpiod_set_value(esp_hci_dev->pwr_gpio, 0);
-
-	msleep(10);
-
-	esp_hci_dev->is_open = false;
-	esp_hci_dev->next_rx_seq = 0;
-	esp_hci_dev->next_tx_seq = 0;
-}
-
 static int esp_hci_close(struct hci_dev *hdev)
 {
 	struct esp_hci_dev *esp_hci_dev = hci_get_drvdata(hdev);
 	dev_info(esp_hci_dev->transport_dev, "HCI: closing...\n");
 
-	struct esp_hci_work close_work;
+	struct esp_hci_work close_work = {
+		.esp_hci_dev = esp_hci_dev,
+	};
 	INIT_WORK_ONSTACK(&close_work.work, esp_hci_close_work);
-	close_work.esp_hci_dev = esp_hci_dev;
 
 	queue_work(esp_hci_dev->wq, &close_work.work);
 	flush_work(&close_work.work);
 
 	dev_info(esp_hci_dev->transport_dev, "HCI: closed!\n");
 
-	return 0;
+	return close_work.res;
 }
 
 static void esp_hci_reset(struct hci_dev *hdev)
@@ -246,12 +295,278 @@ static int esp_hci_send(struct hci_dev *hdev, struct sk_buff *skb)
 	return ret;
 }
 
+static void _fw_open_work_fn(struct work_struct *work)
+{
+	struct esp_hci_work *esp_hci_work =
+		container_of(work, struct esp_hci_work, work);
+	struct esp_hci_dev *esp_hci_dev = esp_hci_work->esp_hci_dev;
+
+	if (esp_hci_dev->state == ESP_HCI_STATE_FWUPD) {
+		esp_hci_work->res = -EBUSY;
+		return;
+	}
+
+	if (esp_hci_dev->state < ESP_HCI_STATE_OPEN) {
+		_state_change(esp_hci_dev, ESP_HCI_STATE_OPENING);
+	}
+
+	gpiod_set_value(esp_hci_dev->pwr_gpio, 1);
+}
+
+static void _fw_start_upd_work_fn(struct work_struct *work)
+{
+	struct esp_hci_work *esp_hci_work =
+		container_of(work, struct esp_hci_work, work);
+	struct esp_hci_dev *esp_hci_dev = esp_hci_work->esp_hci_dev;
+
+	if (esp_hci_dev->state != ESP_HCI_STATE_OPEN) {
+		esp_hci_work->res = -EAGAIN;
+		return;
+	}
+
+	_state_change(esp_hci_dev, ESP_HCI_STATE_FWUPD);
+}
+
+static void _fw_release_work_fn(struct work_struct *work)
+{
+	struct esp_hci_work *esp_hci_work =
+		container_of(work, struct esp_hci_work, work);
+	struct esp_hci_dev *esp_hci_dev = esp_hci_work->esp_hci_dev;
+
+
+	if (esp_hci_dev->state < ESP_HCI_STATE_OPEN) {
+		gpiod_set_value(esp_hci_dev->pwr_gpio, 0);
+		_state_change(esp_hci_dev, ESP_HCI_STATE_CLOSED);
+	} else {
+		_state_change(esp_hci_dev, ESP_HCI_STATE_OPEN);
+	}
+
+	/* If power pin is not supported, trigger a reset to put the controller
+	 * in a clean state. Otherwise this won't do anything, as the dev should
+	 * be off.*/
+	/* TODO: do this only after an update attempt */
+	// gpiod_set_value(esp_hci_dev->rst_gpio, 1);
+	// msleep(3);
+	// gpiod_set_value(esp_hci_dev->rst_gpio, 0);
+
+}
+
+static int _fw_open(struct inode *inode, struct file *fp)
+{
+	struct esp_hci_dev *esp_hci_dev =
+		container_of(inode->i_cdev, struct esp_hci_dev, fw_cdev);
+
+	guard(mutex)(&esp_hci_dev->fw_dev_lock);
+
+	struct esp_hci_work fw_work = {
+		.esp_hci_dev = esp_hci_dev,
+	};
+	INIT_WORK_ONSTACK(&fw_work.work, _fw_open_work_fn);
+	queue_work(esp_hci_dev->wq, &fw_work.work);
+	flush_work(&fw_work.work);
+
+	if (fw_work.res < 0) {
+		return fw_work.res;
+	}
+
+	/* Check if the device is on. With timeout, in case the device was just
+	 * powered on. */
+	int res = wait_event_interruptible_timeout(esp_hci_dev->state_change,
+				  esp_hci_dev->state == ESP_HCI_STATE_OPEN,
+				  msecs_to_jiffies(5000));
+	if (res < 1) {
+		res = -ETIMEDOUT;
+		goto fail;
+	}
+
+	INIT_WORK_ONSTACK(&fw_work.work, _fw_start_upd_work_fn);
+	queue_work(esp_hci_dev->wq, &fw_work.work);
+	flush_work(&fw_work.work);
+
+	if (fw_work.res < 0) {
+		res = fw_work.res;
+		goto fail;
+	}
+
+	return 0;
+
+fail:
+	dev_err(esp_hci_dev->transport_dev, "HCI: fw open failed: %d\n", res);
+
+	INIT_WORK_ONSTACK(&fw_work.work, _fw_release_work_fn);
+	queue_work(esp_hci_dev->wq, &fw_work.work);
+	flush_work(&fw_work.work);
+
+	return res;
+}
+
+static int _fw_release(struct inode *inode, struct file *fp)
+{
+	struct esp_hci_dev *esp_hci_dev =
+		container_of(inode->i_cdev, struct esp_hci_dev, fw_cdev);
+
+	guard(mutex)(&esp_hci_dev->fw_dev_lock);
+
+	struct esp_hci_work fw_rel_work = {
+		.esp_hci_dev = esp_hci_dev,
+	};
+	INIT_WORK_ONSTACK(&fw_rel_work.work, _fw_release_work_fn);
+	queue_work(esp_hci_dev->wq, &fw_rel_work.work);
+	flush_work(&fw_rel_work.work);
+
+	return 0;
+}
+
+struct fw_read_work {
+	struct esp_hci_work super;
+	struct esp_hci_ver framing_ver;
+	struct esp_hci_ver fw_ver;
+};
+
+static void _fw_read_work_fn(struct work_struct *work)
+{
+	struct fw_read_work *read_work =
+		container_of(work, struct fw_read_work, super.work);
+
+	read_work->framing_ver = read_work->super.esp_hci_dev->framing_ver;
+	read_work->fw_ver = read_work->super.esp_hci_dev->fw_ver;
+}
+
+static ssize_t _fw_read(struct file *fp, char __user *buf, size_t count, loff_t *pos)
+{
+	struct esp_hci_dev *esp_hci_dev =
+		container_of(fp->f_inode->i_cdev, struct esp_hci_dev, fw_cdev);
+
+	guard(mutex)(&esp_hci_dev->fw_dev_lock);
+
+	ssize_t res;
+	if (*pos == 0) {
+		struct fw_read_work fw_read_work = {
+			.super.esp_hci_dev = esp_hci_dev,
+		};
+
+		INIT_WORK_ONSTACK(&fw_read_work.super.work, _fw_read_work_fn);
+		queue_work(esp_hci_dev->wq, &fw_read_work.super.work);
+		flush_work(&fw_read_work.super.work);
+
+		res = snprintf(
+			esp_hci_dev->ver_str, sizeof(esp_hci_dev->ver_str),
+			"{\"fw_ver\" : \"%u.%u.%u\", \"framing_ver\" : \"%u.%u.%u\"}",
+			fw_read_work.fw_ver.major, fw_read_work.fw_ver.minor,
+			fw_read_work.fw_ver.patch,
+			fw_read_work.framing_ver.major,
+			fw_read_work.framing_ver.minor,
+			fw_read_work.framing_ver.patch);
+		if (res <= 0) {
+			return res;
+		}
+
+		esp_hci_dev->ver_str[sizeof(esp_hci_dev->ver_str) - 1] = 0;
+	}
+
+	ssize_t const data_available = strlen(esp_hci_dev->ver_str);
+
+	if (*pos > data_available){
+		return 0;
+	}
+
+	if (*pos + count >= data_available) {
+		count = data_available - *pos;
+	}
+
+	if (copy_to_user(buf, esp_hci_dev->ver_str + *pos, count)) {
+		return -EFAULT;
+	}
+
+	(*pos) += count;
+
+	return count;
+}
+
+// static ssize_t _fw_write(struct file *fp, char const __user *buf, size_t count, loff_t *pos)
+// {
+// }
+
+static int _create_fwdev(struct esp_hci_dev *esp_hci_dev)
+{
+	struct device *esp_dev = esp_hci_dev->transport_dev;
+
+	guard(mutex)(&_fwdev_mgmt_lock);
+
+	mutex_init(&esp_hci_dev->fw_dev_lock);
+
+	int res;
+	unsigned minor = 0;
+
+	for (; minor < ESP_HCI_MINOR_CNT; minor++) {
+		if (!__test_and_set_bit(minor, &_fwdev_map)) {
+			break;
+		}
+	}
+
+	if (minor >= ESP_HCI_MINOR_CNT) {
+		dev_err(esp_dev, "esp_hci: reached dev cnt limit of %u\n",
+			ESP_HCI_MINOR_CNT);
+		return -ENODEV;
+	}
+
+	static const struct file_operations fw_cdev_fops = {
+		.owner = THIS_MODULE,
+		.open = _fw_open,
+		.release = _fw_release,
+		.read = _fw_read,
+		// .write = _fw_write, // Not implemented yet.
+	};
+	cdev_init(&esp_hci_dev->fw_cdev, &fw_cdev_fops);
+
+	res = cdev_add(&esp_hci_dev->fw_cdev, MKDEV(_fwdev_major, minor), 1);
+	if (res < 0) {
+		dev_err(esp_dev, "esp_hci: cdev_add() failed: %d\n", res);
+		__clear_bit(minor, &_fwdev_map);
+		return res;
+	}
+
+	esp_hci_dev->fw_device =
+		device_create(_fwdev_class, esp_dev, MKDEV(_fwdev_major, minor), NULL,
+			      "esp_hci_fw_%s",
+			      esp_hci_dev->label ? esp_hci_dev->label : "none");
+	if (IS_ERR(esp_hci_dev->fw_device)) {
+		dev_err(esp_dev, "esp_hci: device_create() err: %ld\n",
+			PTR_ERR(esp_hci_dev->fw_device));
+			__clear_bit(minor, &_fwdev_map);
+			cdev_del(&esp_hci_dev->fw_cdev);
+
+		return PTR_ERR(esp_hci_dev->fw_device);
+	}
+
+	return 0;
+}
+
+static void _remove_fwdev(struct esp_hci_dev *esp_hci_dev)
+{
+	struct device *esp_dev = esp_hci_dev->transport_dev;
+
+	mutex_lock(&_fwdev_mgmt_lock);
+
+	if (!__test_and_clear_bit(MINOR(esp_hci_dev->fw_cdev.dev), &_fwdev_map)) {
+		dev_err(esp_dev, "HCI: fwdev already unregistered");
+	}
+
+	mutex_unlock(&_fwdev_mgmt_lock);
+
+	device_destroy(_fwdev_class, esp_hci_dev->fw_cdev.dev);
+	cdev_del(&esp_hci_dev->fw_cdev);
+
+	wait_event(esp_hci_dev->state_change,
+		   esp_hci_dev->state != ESP_HCI_STATE_FWUPD);
+}
+
 EXPORT_SYMBOL(esp_hci_probe);
 int esp_hci_probe(struct esp_hci_dev *esp_hci_dev)
 {
 	struct device *dev = esp_hci_dev->transport_dev;
 
-	init_waitqueue_head(&esp_hci_dev->wait_open);
+	init_waitqueue_head(&esp_hci_dev->state_change);
 	struct gpio_desc *rst_gpio = devm_gpiod_get(dev, "rst", GPIOD_OUT_LOW);
 	if (IS_ERR(rst_gpio)) {
 		dev_err(dev, "HCI: gpio init err: rst=%ld\n",
@@ -298,6 +613,19 @@ int esp_hci_probe(struct esp_hci_dev *esp_hci_dev)
 		return res;
 	}
 
+	res = of_property_read_string(dev->of_node, "label", &esp_hci_dev->label);
+	if (res < 0) {
+		dev_warn(dev, "HCI: device missing 'label' property in DT! (%d)", res);
+	}
+
+	res = _create_fwdev(esp_hci_dev);
+	if (res < 0) {
+		_unregister_hci_dev(esp_hci_dev);
+		hci_free_dev(hci_dev);
+		destroy_workqueue(esp_hci_dev->wq);
+		return res;
+	}
+
 	return 0;
 }
 
@@ -309,6 +637,7 @@ struct esp_hci_remove_work {
 EXPORT_SYMBOL(esp_hci_remove);
 void esp_hci_remove(struct esp_hci_dev *esp_hci_dev)
 {
+	_remove_fwdev(esp_hci_dev);
 	_unregister_hci_dev(esp_hci_dev);
 	/* Will sync the queue, including any pending close() issued by the HCI
 	 * core. */
@@ -317,30 +646,28 @@ void esp_hci_remove(struct esp_hci_dev *esp_hci_dev)
 	hci_free_dev(esp_hci_dev->hci_dev);
 	esp_hci_dev->hci_dev = NULL;
 
-	if (esp_hci_dev->pwr_gpio) {
-		gpiod_set_value(esp_hci_dev->pwr_gpio, 0);
-	}
+	gpiod_set_value(esp_hci_dev->pwr_gpio, 0);
 }
 
-static int _check_api_ver(struct esp_hci_dev *esp_hci_dev,
-			  struct esp_hci_api_ver const *ver)
+static int _check_framing_ver(struct esp_hci_dev *esp_hci_dev,
+			  struct esp_hci_ver const *ver)
 {
-	if (ver->major != ESP_HCI_API_VER_MAJOR) {
+	if (ver->major != ESP_HCI_FRAMING_VER_MAJOR) {
 		dev_err(esp_hci_dev->transport_dev,
-			"HCI: API ver incompatible: Linux: %d.%d.%d, ESP: %d.%d.%d\n",
-			ESP_HCI_API_VER_MAJOR, ESP_HCI_API_VER_MINOR,
-			ESP_HCI_API_VER_PATCH, ver->major, ver->minor,
+			"HCI: framing ver incompatible: Linux: %d.%d.%d, ESP: %d.%d.%d\n",
+			ESP_HCI_FRAMING_VER_MAJOR, ESP_HCI_FRAMING_VER_MINOR,
+			ESP_HCI_FRAMING_VER_PATCH, ver->major, ver->minor,
 			ver->patch);
 		return -1;
 	}
 
-	if (ver->minor != ESP_HCI_API_VER_MINOR ||
-	    ver->patch != ESP_HCI_API_VER_PATCH) {
+	if (ver->minor != ESP_HCI_FRAMING_VER_MINOR ||
+	    ver->patch != ESP_HCI_FRAMING_VER_PATCH) {
 		dev_warn(
 			esp_hci_dev->transport_dev,
-			"HCI: API ver differ: Linux: %d.%d.%d, ESP: %d.%d.%d\n",
-			ESP_HCI_API_VER_MAJOR, ESP_HCI_API_VER_MINOR,
-			ESP_HCI_API_VER_PATCH, ver->major, ver->minor,
+			"HCI: framing ver differ: Linux: %d.%d.%d, ESP: %d.%d.%d\n",
+			ESP_HCI_FRAMING_VER_MAJOR, ESP_HCI_FRAMING_VER_MINOR,
+			ESP_HCI_FRAMING_VER_PATCH, ver->major, ver->minor,
 			ver->patch);
 	}
 
@@ -351,15 +678,26 @@ static int process_event_esp_bootup(struct esp_hci_dev *esp_hci_dev,
 				    struct sk_buff *skb)
 {
 	struct device *dev = esp_hci_dev->transport_dev;
-	/* No need to register a reset if the dev wasn't on, e.g. on probe. */
-	if (esp_hci_dev->is_open) {
+	/* No need to register a reset if the dev wasn't on, e.g. on probe.
+	 * Also, ignore it during fw update. */
+	if (esp_hci_dev->state == ESP_HCI_STATE_OPEN) {
 		dev_warn_ratelimited(dev, "HCI: detected controller reset!\n");
 		hci_reset_dev(esp_hci_dev->hci_dev);
+		_state_change(esp_hci_dev, ESP_HCI_STATE_OPENING);
+		return 0;
+	}
+
+	if (esp_hci_dev->state == ESP_HCI_STATE_FWUPD) {
+		return 0;
 	}
 
 	/* Drop any previous TX data. */
 	esp_hci_dev->write_packet(esp_hci_dev, NULL);
 	int res = 0;
+
+	esp_hci_dev->caps = 0;
+	esp_hci_dev->framing_ver = (struct esp_hci_ver){ 0 };
+	esp_hci_dev->fw_ver = (struct esp_hci_ver){ 0 };
 
 	while (skb->len >= sizeof(struct esp_cap_tag)) {
 		struct esp_cap_tag *tag = (struct esp_cap_tag *)skb->data;
@@ -383,35 +721,44 @@ static int process_event_esp_bootup(struct esp_hci_dev *esp_hci_dev,
 		case ESP_BOOTUP_FIRMWARE_CHIP_ID:
 			dev_warn(dev, "HCI: skip chip id validation\n");
 			break;
-		case ESP_BOOTUP_FW_DATA:
-			if (tag->len < sizeof(struct esp_hci_api_ver)) {
+		case ESP_BOOTUP_FRAMING_VER:
+		case ESP_BOOTUP_FW_VER:
+			if (tag->len < sizeof(struct esp_hci_ver)) {
 				dev_warn(dev,
-					 "HCI: bootup API ver data invalid\n");
+					 "HCI: bootup ver data invalid\n");
 				res = -EINVAL;
-				goto fail;
+				break;
 			}
-			if (_check_api_ver(esp_hci_dev,
-					   (struct esp_hci_api_ver const *)
-						   tag->data)) {
-				res = -EINVAL;
-				goto fail;
-			}
+
+			*(tag->id == ESP_BOOTUP_FRAMING_VER ?
+				  &esp_hci_dev->framing_ver :
+				  &esp_hci_dev->fw_ver) =
+				*(struct esp_hci_ver const *)tag->data;
+
 			break;
 		case ESP_BOOTUP_SPI_CLK_MHZ:
 			dev_warn(dev, "HCI: skip SPI clock reconfig\n");
 			break;
 		default:
-			dev_warn(dev, "HCI: unsupported tag in bootup event\n");
+			dev_warn(dev, "HCI: unsupported tag in bootup event (%d)\n",
+				 tag->id);
 		}
 
 		skb_pull(skb, sizeof(struct esp_cap_tag) + tag->len);
 	}
 
+	dev_info(dev, "HCI: FW ver = %d.%d.%d\n", esp_hci_dev->fw_ver.major,
+		 esp_hci_dev->fw_ver.minor, esp_hci_dev->fw_ver.patch);
+
+	if (_check_framing_ver(esp_hci_dev, &esp_hci_dev->framing_ver)) {
+		res = -EINVAL;
+		goto fail;
+	}
+
 	if (esp_hci_dev->caps & ESP_BT_SUPPORT) {
 		dev_info(dev, "HCI: ESP supports HCI\n");
 
-		esp_hci_dev->is_open = true;
-		wake_up(&esp_hci_dev->wait_open);
+		_state_change(esp_hci_dev, ESP_HCI_STATE_OPEN);
 	} else {
 		dev_err(dev, "HCI: ESP does not support HCI\n");
 		goto fail;
@@ -423,7 +770,7 @@ static int process_event_esp_bootup(struct esp_hci_dev *esp_hci_dev,
 
 fail:
 	dev_err(dev, "HCI: ESP bootup failure\n");
-	esp_hci_dev->is_open = false;
+	_state_change(esp_hci_dev, ESP_HCI_STATE_CLOSED);
 
 	return res;
 }
@@ -441,6 +788,7 @@ static void process_internal_event(struct esp_hci_dev *esp_hci_dev,
 
 	switch (header->event_code) {
 	case ESP_INTERNAL_BOOTUP_EVENT:
+	{
 		struct esp_internal_bootup_event *evt =
 			(struct esp_internal_bootup_event *)skb->data;
 		if (skb->len < sizeof(struct esp_internal_bootup_event)) {
@@ -463,6 +811,7 @@ static void process_internal_event(struct esp_hci_dev *esp_hci_dev,
 
 		process_event_esp_bootup(esp_hci_dev, skb);
 		break;
+	}
 	default:
 		dev_warn(dev, "HCI: %u unhandled internal event[%u]\n",
 			 __LINE__, header->event_code);
@@ -514,11 +863,13 @@ void esp_hci_rcv_pkt(struct esp_hci_dev *esp_hci_dev, struct sk_buff *_skb)
 
 	switch ((enum ESP_INTERFACE_TYPE)hdr.if_type) {
 	case ESP_INTERNAL_IF:
-		process_internal_event(esp_hci_dev, skb);
+		if (esp_hci_dev->state > ESP_HCI_STATE_CLOSED) {
+			process_internal_event(esp_hci_dev, skb);
+		}
 		break;
 
 	case ESP_HCI_IF:
-		if (!esp_hci_dev->is_open) {
+		if (esp_hci_dev->state < ESP_HCI_STATE_OPEN) {
 			dev_warn_ratelimited(dev,
 					     "HCI: %s: HCI packet for closed device!\n",
 					     __func__);
@@ -549,12 +900,29 @@ void esp_hci_rcv_pkt(struct esp_hci_dev *esp_hci_dev, struct sk_buff *_skb)
 static int __init esp_hci_init(void)
 {
 	printk("esp_hci: init\n");
+	dev_t fwdev;
+	int res = alloc_chrdev_region(&fwdev, 0, ESP_HCI_MINOR_CNT, "esp_hci");
+	if (res < 0) {
+		printk("esp_hci: alloc_chrdev_region() failed: %d\n", res);
+		return res;
+	}
+	_fwdev_major = MAJOR(fwdev);
+
+	_fwdev_class = class_create("fw_update");
+	if (IS_ERR(_fwdev_class)) {
+		printk("esp_hci: class_create() failed: %ld\n", PTR_ERR(_fwdev_class));
+		unregister_chrdev_region(MKDEV(_fwdev_major, 0), ESP_HCI_MINOR_CNT);
+		return PTR_ERR(_fwdev_class);
+	}
+
 	return 0;
 }
 
 static void __exit esp_hci_exit(void)
 {
 	printk("esp_hci: exit\n");
+	class_destroy(_fwdev_class);
+	unregister_chrdev_region(MKDEV(_fwdev_major, 0), ESP_HCI_MINOR_CNT);
 	return;
 }
 
