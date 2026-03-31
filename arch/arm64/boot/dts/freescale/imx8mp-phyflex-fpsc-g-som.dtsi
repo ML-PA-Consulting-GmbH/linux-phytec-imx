@@ -13,6 +13,9 @@
 	aliases {
 		rtc0 = &rv3028;
 		rtc1 = &snvs_rtc;
+		/delete-property/ ethernet0;
+		ethernet1 = &fec;
+		ethernet2 = &eqos;
 	};
 
 	memory@40000000 {
