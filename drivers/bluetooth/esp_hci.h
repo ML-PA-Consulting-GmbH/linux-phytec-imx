@@ -7,6 +7,7 @@
  */
 #pragma once
 
+#include "linux/cdev.h"
 #include <linux/device.h>
 #include <linux/skbuff.h>
 #include <linux/wait.h>
@@ -17,7 +18,33 @@
 struct esp_hci_work {
 	struct work_struct work;
 	struct esp_hci_dev *esp_hci_dev;
+	int res;
 };
+
+struct esp_hci_ver {
+	uint8_t major;
+	uint8_t minor;
+	uint8_t patch;
+} __packed;
+
+/**
+ * struct esp_hci_state_t - ESP HCI device state
+ *
+ * @ESP_HCI_STATE_CLOSED: device is powered off or in an unknown state
+ * @ESP_HCI_STATE_OPENING: power on/reset sequence triggered.
+ * @ESP_HCI_STATE_OPEN: the device on and is functional.
+ * @ESP_HCI_STATE_FWUPD: the device is on and functional, but is performing a
+ *			 firmware update. The device cannot be powered off/reset
+ *			 while in this state.
+ *
+ * ** DO NOT REORDER! **
+ */
+typedef enum {
+	ESP_HCI_STATE_CLOSED = 0,
+	ESP_HCI_STATE_OPENING = 1,
+	ESP_HCI_STATE_OPEN = 2,
+	ESP_HCI_STATE_FWUPD = 3,
+} esp_hci_state_t;
 
 /**
  * struct esp_hci_dev - ESP HCI device structure
@@ -31,10 +58,17 @@ struct esp_hci_work {
  * @caps: Capabilities flags.
  * @hci_dev: Kernel HCI core device.
  * @wq: Workqueue for serializing any state change.
+ * @state: device state
+ * @state_change: signals when the device state changes
+ * @label: 'label' property from device tree, NULL if missing.
+ * @fw_cdev: firmware character device
+ * @fw_device: firmware device
+ * @fw_dev_lock: serializes fw device file operations
+ * @fw_ver: firmware version, set when device boots
+ * @framing_ver: transport framing version, set when device boots
+ * @ver_str: storage for the version string, read by the firmware character dev
  * @next_tx_seq: seq no of the next frame going out.
  * @next_rx_seq: expected seq no of the next frame coming in.
- * @is_open: device is up and ready
- * @wait_open: signals when the device is booted
  */
 struct esp_hci_dev {
 	/* The following fields are set up by the transport layer before calling
@@ -72,14 +106,23 @@ struct esp_hci_dev {
 	unsigned caps;
 	struct hci_dev *hci_dev;
 	struct workqueue_struct *wq;
+	esp_hci_state_t state;
+	struct wait_queue_head state_change;
+	char const *label;
+
+	struct cdev fw_cdev;
+	struct device *fw_device;
+	struct mutex fw_dev_lock;
+
+	struct esp_hci_ver fw_ver;
+	struct esp_hci_ver framing_ver;
+
+	char ver_str[80];
 
 	/* Used to track transport layer frame losses. */
 
 	uint8_t next_tx_seq;
 	uint8_t next_rx_seq;
-
-	bool is_open;
-	struct wait_queue_head wait_open;
 };
 
 /**
