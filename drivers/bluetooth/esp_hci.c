@@ -39,6 +39,9 @@ DEFINE_MUTEX(_fwdev_mgmt_lock);
 
 #define ESP_HCI_MINOR_CNT 4
 
+#define ESP_HCI_SPI_TX_QLEN_MAX 32
+#define ESP_HCI_SPI_TX_QLEN_RESUME (ESP_HCI_SPI_TX_QLEN_MAX - 8)
+
 static unsigned long _fwdev_map;
 static unsigned _fwdev_major;
 static struct class *_fwdev_class;
@@ -84,6 +87,9 @@ struct esp_cap_tag {
 	uint8_t len;
 	uint8_t data[0];
 } __packed;
+
+static int _send_packet(struct esp_hci_dev *esp_hci_dev, struct sk_buff *skb);
+static void _flush_tx_queue(struct esp_hci_dev *esp_hci_dev);
 
 static void _state_change(struct esp_hci_dev *esp_hci_dev, esp_hci_state_t new)
 {
@@ -170,7 +176,6 @@ static void esp_hci_close_work(struct work_struct *work)
 	_state_change(esp_hci_dev, ESP_HCI_STATE_CLOSED);
 
 	esp_hci_dev->next_rx_seq = 0;
-	esp_hci_dev->next_tx_seq = 0;
 }
 
 static int esp_hci_open(struct hci_dev *hdev)
@@ -208,7 +213,7 @@ static int esp_hci_flush(struct hci_dev *hdev)
 	struct esp_hci_dev *esp_hci_dev = hci_get_drvdata(hdev);
 	dev_info(esp_hci_dev->transport_dev, "HCI: flush\n");
 
-	esp_hci_dev->write_packet(esp_hci_dev, NULL);
+	_flush_tx_queue(esp_hci_dev);
 	flush_workqueue(esp_hci_dev->wq);
 
 	return 0;
@@ -273,7 +278,7 @@ static int esp_hci_send(struct hci_dev *hdev, struct sk_buff *skb)
 	*hdr = (struct esp_payload_header){
 		.offset = cpu_to_le16(header_len),
 		.if_type = ESP_IF_TYPE_HCI_HCI,
-		.seq = esp_hci_dev->next_tx_seq++,
+		.seq = 0, // will be added once enqueued
 		.len = cpu_to_le16(payload_len),
 		.hci_pkt_type = hci_skb_pkt_type(nskb),
 	};
@@ -281,8 +286,7 @@ static int esp_hci_send(struct hci_dev *hdev, struct sk_buff *skb)
 	hdr->checksum = cpu_to_le16(compute_checksum(nskb->data, nskb->len));
 	// _debug_header(hdr, "TX");
 
-	int ret = esp_hci_dev->write_packet(esp_hci_dev, nskb);
-
+	int ret = _send_packet(esp_hci_dev, nskb);
 	if (nskb != skb) {
 		/* SKB was reallocated:
 		 *  - success: free the old SKB, we passed the new one to the
@@ -566,6 +570,7 @@ int esp_hci_probe(struct esp_hci_dev *esp_hci_dev)
 {
 	struct device *dev = esp_hci_dev->transport_dev;
 
+	skb_queue_head_init(&esp_hci_dev->tx_queue);
 	init_waitqueue_head(&esp_hci_dev->state_change);
 	struct gpio_desc *rst_gpio = devm_gpiod_get(dev, "rst", GPIOD_OUT_LOW);
 	if (IS_ERR(rst_gpio)) {
@@ -647,6 +652,8 @@ void esp_hci_remove(struct esp_hci_dev *esp_hci_dev)
 	esp_hci_dev->hci_dev = NULL;
 
 	gpiod_set_value(esp_hci_dev->pwr_gpio, 0);
+
+	skb_queue_purge(&esp_hci_dev->tx_queue);
 }
 
 static int _check_framing_ver(struct esp_hci_dev *esp_hci_dev,
@@ -692,7 +699,7 @@ static int process_event_esp_bootup(struct esp_hci_dev *esp_hci_dev,
 	}
 
 	/* Drop any previous TX data. */
-	esp_hci_dev->write_packet(esp_hci_dev, NULL);
+	_flush_tx_queue(esp_hci_dev);
 	int res = 0;
 
 	esp_hci_dev->caps = 0;
@@ -895,6 +902,68 @@ void esp_hci_rcv_pkt(struct esp_hci_dev *esp_hci_dev, struct sk_buff *_skb)
 	default:
 		break;
 	}
+}
+
+EXPORT_SYMBOL(esp_hci_pop_tx_packet);
+struct sk_buff *esp_hci_pop_tx_packet(struct esp_hci_dev *esp_hci_dev)
+{
+	spin_lock(&esp_hci_dev->tx_queue.lock);
+
+	struct sk_buff *tx_skb = __skb_dequeue(&esp_hci_dev->tx_queue);
+	if (!tx_skb) {
+		spin_unlock(&esp_hci_dev->tx_queue.lock);
+		return NULL;
+	}
+
+	if (esp_hci_dev->tx_queue.qlen <= ESP_HCI_SPI_TX_QLEN_RESUME) {
+		esp_hci_dev->tx_paused = false;
+	}
+
+	spin_unlock(&esp_hci_dev->tx_queue.lock);
+
+	return tx_skb;
+}
+
+static void _flush_tx_queue(struct esp_hci_dev *esp_hci_dev)
+{
+	spin_lock(&esp_hci_dev->tx_queue.lock);
+	__skb_queue_purge(&esp_hci_dev->tx_queue);
+	esp_hci_dev->next_tx_seq = 0;
+	spin_unlock(&esp_hci_dev->tx_queue.lock);
+}
+
+static int _send_packet(struct esp_hci_dev *esp_hci_dev, struct sk_buff *skb)
+{
+	spin_lock(&esp_hci_dev->tx_queue.lock);
+
+	if (esp_hci_dev->tx_paused) {
+		spin_unlock(&esp_hci_dev->tx_queue.lock);
+		return -EBUSY;
+	}
+
+	size_t queue_len = esp_hci_dev->tx_queue.qlen;
+	if (queue_len >= ESP_HCI_SPI_TX_QLEN_MAX) {
+		esp_hci_dev->tx_paused = true;
+		spin_unlock(&esp_hci_dev->tx_queue.lock);
+
+		dev_warn_ratelimited(esp_hci_dev->transport_dev,
+				     "TX queue limit reached!\n");
+		return -EBUSY;
+	}
+
+	struct esp_payload_header *header = (struct esp_payload_header *)skb->data;
+	header->seq = esp_hci_dev->next_tx_seq++;
+	header->checksum += header->seq;
+
+	__skb_queue_tail(&esp_hci_dev->tx_queue, skb);
+
+	spin_unlock(&esp_hci_dev->tx_queue.lock);
+
+	if (queue_len == 0) {
+		esp_hci_dev->tx_ready(esp_hci_dev);
+	}
+
+	return 0;
 }
 
 static int __init esp_hci_init(void)
