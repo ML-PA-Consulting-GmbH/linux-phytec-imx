@@ -53,6 +53,10 @@ typedef enum {
  *
  * @type: Transport layer type. Search for "HCI bus types" is hci.h.
  * @transport_dev: Underlying kernel device associated with the transport.
+ * @tx_queue: TX skb queue.
+ * @tx_paused: TX skb was full, now waiting to be drained.
+ * @next_tx_seq: seq no of the next frame going out.
+ * @next_rx_seq: expected seq no of the next frame coming in.
  * @pwr_gpio: Controller reset.
  * @pwr_gpio: Controller power supply control. May be NULL if missing.
  * @caps: Capabilities flags.
@@ -67,8 +71,6 @@ typedef enum {
  * @fw_ver: firmware version, set when device boots
  * @framing_ver: transport framing version, set when device boots
  * @ver_str: storage for the version string, read by the firmware character dev
- * @next_tx_seq: seq no of the next frame going out.
- * @next_rx_seq: expected seq no of the next frame coming in.
  */
 struct esp_hci_dev {
 	/* The following fields are set up by the transport layer before calling
@@ -76,13 +78,9 @@ struct esp_hci_dev {
 
 	__u8 type;
 	/**
-	 * @write_packet: Send HCI packet to the controller.
-	 * SHALL NOT free @skb on error. Purges TX queue if @skb == NULL.
-	 *
-	 * Returns 0 on success, negative error otherwise.
+	 * @tx_ready: Signal the transport layer that the TX queue is not empty.
 	 */
-	int (*write_packet)(struct esp_hci_dev *esp_hci_dev,
-			    struct sk_buff *skb);
+	void (*tx_ready)(struct esp_hci_dev *esp_hci_dev);
 	/**
 	 * @write_packet: Expand TX skb as required by the transport layer..
 	 *
@@ -101,6 +99,11 @@ struct esp_hci_dev {
 
 	/* The following fields are set by the ESP HCI generic implementation. */
 
+	struct sk_buff_head tx_queue;
+	bool tx_paused;
+	uint8_t next_tx_seq;
+	uint8_t next_rx_seq;
+
 	struct gpio_desc *rst_gpio;
 	struct gpio_desc *pwr_gpio;
 	unsigned caps;
@@ -118,11 +121,6 @@ struct esp_hci_dev {
 	struct esp_hci_ver framing_ver;
 
 	char ver_str[80];
-
-	/* Used to track transport layer frame losses. */
-
-	uint8_t next_tx_seq;
-	uint8_t next_rx_seq;
 };
 
 /**
@@ -187,5 +185,14 @@ void esp_hci_remove(struct esp_hci_dev *esp_hci_dev);
  *       esp_payload_header) bytes.
  */
 void esp_hci_rcv_pkt(struct esp_hci_dev *esp_hci_dev, struct sk_buff *pkt);
+
+/**
+ * esp_hci_pop_tx_packet - Pop a TX packet.
+ *
+ * @esp_hci_dev: ESP HCI dev
+ *
+ * Return: TX skb on success, NULL otherwise (queue is empty).
+ */
+struct sk_buff *esp_hci_pop_tx_packet(struct esp_hci_dev *esp_hci_dev);
 
 DEFINE_FREE(sk_buff, struct sk_buff *, if (_T) kfree_skb(_T));
