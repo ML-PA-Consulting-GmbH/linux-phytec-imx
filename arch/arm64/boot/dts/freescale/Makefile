@@ -370,6 +370,8 @@ imx8mp-phyboard-pollux-vm020-csi2-fpdlink-port0-dtbs := imx8mp-phyboard-pollux-r
 			  imx8mp-phyboard-pollux-vm020-csi2-fpdlink-port0.dtbo
 imx8mp-phyboard-pollux-vm020-csi2-fpdlink-port1-dtbs := imx8mp-phyboard-pollux-rdk.dtb \
 			  imx8mp-phyboard-pollux-vm020-csi2-fpdlink-port1.dtbo
+imx8mp-phyboard-pollux-vm024-csi1-dtbs := imx8mp-phyboard-pollux-rdk.dtb imx8mp-phyboard-pollux-vm024-csi1.dtbo
+imx8mp-phyboard-pollux-vm024-csi2-dtbs := imx8mp-phyboard-pollux-rdk.dtb imx8mp-phyboard-pollux-vm024-csi2.dtbo
 imx8mp-phyboard-pollux-wlbt-dtbs := imx8mp-phyboard-pollux-rdk.dtb \
        imx8mp-phyboard-pollux-peb-wlbt-05.dtbo
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-etml1010g3dra.dtb
@@ -400,6 +402,8 @@ dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-vm020-csi1-fpdlink-port1.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-vm020-csi2.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-vm020-csi2-fpdlink-port0.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-vm020-csi2-fpdlink-port1.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-vm024-csi1.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-vm024-csi2.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-wlbt.dtb
 
 dtb-$(CONFIG_ARCH_MXC) += imx8mq-evk.dtb imx8mq-evk-rpmsg.dtb
