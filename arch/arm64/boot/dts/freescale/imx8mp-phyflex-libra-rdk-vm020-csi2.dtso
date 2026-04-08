@@ -4,6 +4,8 @@
  * Author: Stefan Riedmüller <s.riedmueller@phytec.de>
  */
 
+#include <dt-bindings/media/video-interfaces.h>
+
 /dts-v1/;
 /plugin/;
 
@@ -37,7 +39,7 @@
 
 			vm020_csi2_ep: endpoint {
 				remote-endpoint = <&mipi_csi1_ep>;
-				bus-type = <4>; /* MIPI CSI-2 D-PHY */
+				bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
 				link-frequencies = /bits/ 64 <450000000>;
 				data-lanes = <1 2 3 4>;
 				clock-lanes = <0>;
