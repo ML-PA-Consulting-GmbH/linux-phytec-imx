@@ -221,6 +221,8 @@
 };
 
 &hdmi {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hdmi>;
 	status = "okay";
 };
 
@@ -436,9 +438,6 @@ csi1_i2c: &i2c3 {
 };
 
 &iomuxc {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_hog>;
-
 	pinctrl_ecspi1: ecspi1grp {
 		fsl,pins = <
 			MX8MP_IOMUXC_ECSPI1_MISO__ECSPI1_MISO   0x80
@@ -500,12 +499,12 @@ csi1_i2c: &i2c3 {
 		>;
 	};
 
-	pinctrl_hog: hoggrp {
+	pinctrl_hdmi: hdmigrp {
 		fsl,pins = <
-			MX8MP_IOMUXC_HDMI_DDC_SCL__HDMIMIX_HDMI_SCL	0x400001c3
-			MX8MP_IOMUXC_HDMI_DDC_SDA__HDMIMIX_HDMI_SDA	0x400001c3
-			MX8MP_IOMUXC_HDMI_HPD__HDMIMIX_HDMI_HPD		0x40000019
-			MX8MP_IOMUXC_HDMI_CEC__HDMIMIX_HDMI_CEC		0x40000019
+			MX8MP_IOMUXC_HDMI_DDC_SCL__HDMIMIX_HDMI_SCL	0x1c2
+			MX8MP_IOMUXC_HDMI_DDC_SDA__HDMIMIX_HDMI_SDA	0x1c2
+			MX8MP_IOMUXC_HDMI_HPD__HDMIMIX_HDMI_HPD		0x18
+			MX8MP_IOMUXC_HDMI_CEC__HDMIMIX_HDMI_CEC		0x18
 		>;
 	};
 
@@ -633,4 +632,8 @@ csi1_i2c: &i2c3 {
 			MX8MP_IOMUXC_GPIO1_IO04__USDHC2_VSELECT	0xc0
 		>;
 	};
+};
+
+&sdma2 {
+	status = "okay";
 };
