@@ -40,22 +40,6 @@
 		};
 	};
 
-	reg_can1_stby: regulator-can1-stby {
-		compatible = "regulator-fixed";
-		regulator-max-microvolt = <1800000>;
-		regulator-min-microvolt = <1800000>;
-		regulator-name = "can1-stby";
-		gpio = <&gpio_expander 10 GPIO_ACTIVE_LOW>;
-	};
-
-	reg_can2_stby: regulator-can2-stby {
-		compatible = "regulator-fixed";
-		regulator-max-microvolt = <1800000>;
-		regulator-min-microvolt = <1800000>;
-		regulator-name = "can2-stby";
-		gpio = <&gpio_expander 9 GPIO_ACTIVE_LOW>;
-	};
-
 	reg_vdd_12v0: regulator-vdd-12v0 {
 		compatible = "regulator-fixed";
 		regulator-always-on;
@@ -116,12 +100,10 @@
 
 /* CAN FD */
 &flexcan1 {
-	xceiver-supply = <&reg_can1_stby>;
 	status = "okay";
 };
 
 &flexcan2 {
-	xceiver-supply = <&reg_can2_stby>;
 	status = "okay";
 };
 
