@@ -148,11 +148,47 @@
 		pagesize = <16>;
 		vcc-supply = <&reg_vdd_1v8>;
 	};
+
+	gpio_expander1: gpio@21 {
+		compatible = "ti,tcal6416";
+		reg = <0x21>;
+		interrupt-controller;
+		interrupt-parent = <&gpio5>;
+		interrupts = <26 IRQ_TYPE_LEVEL_LOW>;
+		#interrupt-cells = <2>;
+		#gpio-cells = <2>;
+		gpio-controller;
+		gpio-line-names = "VCONN_nFAULT", "CSI1_CTRL1", "CSI1_CTRL3",
+				  "CSI1_CTRL4", "USB-C_nINT/AUDIO_AC",
+				  "CSI2_CTRL1", "CSI2_CTRL3", "CSI2_CTRL4",
+				  "CLK_EN_AV", "W_nDISABLE1", "W_nDISABLE2",
+				  "PCIE1_nWAKE", "NC", "UART1_nWAKE",
+				  "UART1_BT_RS_SEL", "UART1_RS232_485_SEL";
+
+		vcc-supply = <&reg_vdd_1v8>;
+	};
 };
 
 &i2c3 {
 	clock-frequency = <400000>;
 	status = "okay";
+
+	gpio_expander2: gpio@21 {
+		compatible = "ti,tcal6416";
+		reg = <0x21>;
+		interrupt-controller;
+		interrupt-parent = <&gpio4>;
+		interrupts = <3 IRQ_TYPE_LEVEL_LOW>;
+		#interrupt-cells = <2>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		gpio-line-names = "CAN1_STBY", "CAN2_STBY", "NC",
+				  "KEY-E_nALERT", "NC", "SDIO_nWAKE",
+				  "SDIO_nRESET", "HDMI_EN", "RTC_nINT",
+				  "LVDS1_BL_EN", "NC", "NC", "NC", "NC",
+				  "NC", "NC";
+		vcc-supply = <&reg_vdd_1v8>;
+	};
 
 	led-controller@62 {
 		compatible = "nxp,pca9633";
@@ -176,43 +212,6 @@
 			reg = <2>;
 			color = <LED_COLOR_ID_BLUE>;
 			function = LED_FUNCTION_STATUS;
-		};
-	};
-};
-
-&i2c5 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	clock-frequency = <400000>;
-	status = "okay";
-
-	gpio_expander: gpio@20 {
-		compatible = "ti,tca6416";
-		reg = <0x20>;
-		interrupt-parent = <&gpio4>;
-		interrupts = <3 IRQ_TYPE_LEVEL_LOW>;
-		#gpio-cells = <2>;
-		gpio-controller;
-		gpio-line-names = "CSI1_CTRL1", "CSI1_CTRL2", "CSI1_CTRL3",
-				  "CSI1_CTRL4", "CSI2_CTRL1", "CSI2_CTRL2",
-				  "CSI2_CTRL3", "CSI2_CTRL4", "CLK_EN_AV",
-				  "nCAN2_EN", "nCAN1_EN", "PCIE1_nWAKE",
-				  "PCIE2_nWAKE", "PCIE2_nALERT_3V3",
-				  "UART1_BT_RS_SEL", "UART1_RS232_485_SEL";
-		vcc-supply = <&reg_vdd_1v8>;
-
-		uart1_bt_rs_sel: bt-rs-hog {
-			gpios = <14 GPIO_ACTIVE_HIGH>;
-			gpio-hog;
-			line-name = "UART1_BT_RS_SEL";
-			output-low;	/* default RS232/RS485 */
-		};
-
-		uart1_rs232_485_sel: rs232-485-hog {
-			gpios = <15 GPIO_ACTIVE_HIGH>;
-			gpio-hog;
-			line-name = "UART1_RS232_485_SEL";
-			output-high;	/* default RS232 */
 		};
 	};
 };
