@@ -293,6 +293,12 @@
 	status = "okay";
 };
 
+/* RS232/RS485/BT */
+&uart3 {
+	uart-has-rtscts;
+	status = "okay";
+};
+
 /* debug console */
 &uart4 {
 	status = "okay";
