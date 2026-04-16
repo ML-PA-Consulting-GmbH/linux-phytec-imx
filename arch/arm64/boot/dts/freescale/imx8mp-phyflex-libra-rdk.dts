@@ -238,11 +238,6 @@
 			MX8MP_IOMUXC_UART1_TXD__GPIO5_IO23	0x12
 		>;
 	};
-	pinctrl_rtc: rtcgrp {
-		fsl,pins = <
-			MX8MP_IOMUXC_UART2_TXD__GPIO5_IO25	0x1c0
-		>;
-	};
 };
 
 &ldb {
@@ -280,11 +275,9 @@
 };
 
 &rv3028 {
-	interrupt-parent = <&gpio5>;
-	interrupts = <25 IRQ_TYPE_LEVEL_LOW>;
+	interrupt-parent = <&gpio_expander2>;
+	interrupts = <8 IRQ_TYPE_LEVEL_LOW>;
 	aux-voltage-chargeable = <1>;
-	pinctrl-0 = <&pinctrl_rtc>;
-	pinctrl-names = "default";
 	trickle-resistor-ohms = <3000>;
 	wakeup-source;
 };
