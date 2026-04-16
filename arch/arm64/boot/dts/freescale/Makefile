@@ -344,6 +344,7 @@ imx8mp-phyboard-pollux-peb-av-10-ph128800t006-dtbs := imx8mp-phyboard-pollux-rdk
 imx8mp-phyboard-pollux-ph128800t006-dtbs := imx8mp-phyboard-pollux-rdk.dtb \
 	imx8mp-phyboard-pollux-ph128800t006.dtbo
 imx8mp-phyboard-pollux-rdk-no-eth-dtbs := imx8mp-phyboard-pollux-rdk.dtb imx8mp-phycore-no-eth.dtbo
+imx8mp-phyboard-pollux-rdk-rpmsg-dtbs := imx8mp-phyboard-pollux-rdk.dtb imx8mp-phycore-rpmsg.dtbo
 imx8mp-phyboard-pollux-vm016-csi1-dtbs := imx8mp-phyboard-pollux-rdk.dtb imx8mp-phyboard-pollux-vm016-csi1.dtbo
 imx8mp-phyboard-pollux-vm016-csi1-fpdlink-port0-dtbs := imx8mp-phyboard-pollux-rdk.dtb \
 			  imx8mp-phyboard-pollux-vm016-csi1-fpdlink-port0.dtbo
