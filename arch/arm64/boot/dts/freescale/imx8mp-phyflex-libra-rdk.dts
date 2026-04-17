@@ -123,6 +123,16 @@
 	status = "okay";
 };
 
+&ecspi2 {
+	status = "okay";
+
+	tpm@0 {
+		compatible = "infineon,slb9670", "tcg,tpm_tis-spi";
+		reg = <0>;
+		spi-max-frequency = <18500000>;
+	};
+};
+
 &flexspi {
 	status = "okay";
 
