@@ -918,10 +918,9 @@ static int airoha_qdma_tx_napi_poll(struct napi_struct *napi, int budget)
 			q->tail = (q->tail + 1) % q->ndesc;
 
 		if (skb) {
-			u16 queue = skb_get_queue_mapping(skb);
 			struct netdev_queue *txq;
 
-			txq = netdev_get_tx_queue(skb->dev, queue);
+			txq = skb_get_tx_queue(skb->dev, skb);
 			netdev_tx_completed_queue(txq, 1, skb->len);
 			if (netif_tx_queue_stopped(txq) &&
 			    q->ndesc - q->queued >= q->free_thr)
@@ -1662,7 +1661,7 @@ static int airoha_dev_stop(struct net_device *dev)
 	if (err)
 		return err;
 
-	for (i = 0; i < ARRAY_SIZE(qdma->q_tx); i++)
+	for (i = 0; i < dev->num_tx_queues; i++)
 		netdev_tx_reset_subqueue(dev, i);
 
 	if (atomic_dec_and_test(&qdma->users)) {
@@ -1937,7 +1936,7 @@ static netdev_tx_t airoha_dev_xmit(struct sk_buff *skb,
 
 	spin_lock_bh(&q->lock);
 
-	txq = netdev_get_tx_queue(dev, qid);
+	txq = skb_get_tx_queue(dev, skb);
 	nr_frags = 1 + skb_shinfo(skb)->nr_frags;
 
 	if (airoha_dev_tx_queue_busy(q, nr_frags)) {
