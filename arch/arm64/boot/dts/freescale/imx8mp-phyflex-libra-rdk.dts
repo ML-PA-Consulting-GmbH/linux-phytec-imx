@@ -243,6 +243,9 @@
 };
 
 &iomuxc {
+	/* No USB signals connected on the baseboard */
+	/delete-node/ usb1grp;
+
 	pinctrl_lvds0: lvds0grp {
 		fsl,pins = <
 			MX8MP_IOMUXC_UART1_TXD__GPIO5_IO23	0x12
@@ -331,9 +334,11 @@
 };
 
 &usb3_1 {
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-names;
 	fsl,permanently-attached;
-	fsl,over-current-active-low;
-	fsl,power-active-high;
+	fsl,disable-port-power-control;
+	disable-over-current;
 	status = "okay";
 };
 
