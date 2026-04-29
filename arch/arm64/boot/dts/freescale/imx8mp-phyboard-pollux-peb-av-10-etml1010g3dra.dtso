@@ -31,6 +31,10 @@
 	status = "okay";
 };
 
+&lvds_ch0 {
+	status = "okay";
+};
+
 &media_blk_ctrl {
 	/*
 	 * The LVDS panel on this device uses 72.4 MHz pixel clock,

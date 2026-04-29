@@ -47,7 +47,7 @@
 
 		port {
 			panel1_in: endpoint {
-				remote-endpoint = <&ldb_lvds_ch1>;
+				remote-endpoint = <&ldb_lvds_ch1_ep>;
 			};
 		};
 	};
@@ -280,21 +280,17 @@ csi1_i2c: &i2c3 {
 
 /* LVDS1 */
 &ldb {
-	lvds-channel@0 {
-		status = "disabled";
-	};
-
-	lvds-channel@1 {
+	lvds_ch1: lvds-channel@1 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		fsl,data-mapping = "spwg";
 		fsl,data-width = <24>;
-		status = "okay";
+		status = "disabled";
 
 		port@1 {
 			reg = <1>;
 
-			ldb_lvds_ch1: endpoint {
+			ldb_lvds_ch1_ep: endpoint {
 				remote-endpoint = <&panel1_in>;
 			};
 		};

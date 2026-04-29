@@ -30,6 +30,10 @@
 	status = "okay";
 };
 
+&lvds_ch1 {
+	status = "okay";
+};
+
 &media_blk_ctrl {
 	/*
 	 * The LVDS panel uses 72.4 MHz pixel clock, set IMX8MP_VIDEO_PLL1 to
