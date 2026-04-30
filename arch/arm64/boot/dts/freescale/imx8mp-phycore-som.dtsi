@@ -94,6 +94,7 @@
 		spi-rx-bus-width = <4>;
 		spi-tx-bus-width = <1>;
 		vcc-supply = <&reg_vdd_1v8>;
+		#size-cells = <1>;
 	};
 };
 
