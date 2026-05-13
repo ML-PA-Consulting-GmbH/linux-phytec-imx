@@ -389,6 +389,7 @@ dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-peb-av-10-etml1010g3dra.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-peb-av-10-ph128800t006.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-ph128800t006.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-rdk-no-eth.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-rdk-rpmsg.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-vm016-csi1.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-vm016-csi1-fpdlink-port0.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-phyboard-pollux-vm016-csi1-fpdlink-port1.dtb
