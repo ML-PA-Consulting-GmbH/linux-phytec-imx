@@ -710,27 +710,6 @@ static int ar0521_vv_set_sensormode(struct ar0521 *sensor, void *args)
 	return 0;
 }
 
-static int ar0521_vv_s_stream(struct ar0521 *sensor, void *args)
-{
-	struct v4l2_subdev *sd = &sensor->subdev;
-	unsigned int enable = 0;
-	int ret;
-
-	ret = copy_from_user(&enable, args, sizeof(enable));
-	if (ret)
-		return -EIO;
-
-	if (enable)
-		ret = v4l2_subdev_enable_streams(sd, 0, BIT_ULL(0));
-	else
-		ret = v4l2_subdev_disable_streams(sd, 0, BIT_ULL(0));
-
-	if (ret == -EALREADY)
-		ret = 0;
-
-	return ret;
-}
-
 static int ar0521_vv_set_exposure(struct ar0521 *sensor, void *args)
 {
 	struct device *dev = sensor->subdev.dev;
@@ -962,9 +941,6 @@ static long ar0521_priv_ioctl(struct v4l2_subdev *sd, unsigned int cmd,
 			return ret;
 		break;
 	case VVSENSORIOC_S_STREAM:
-		ret = ar0521_vv_s_stream(sensor, arg);
-		if (ret)
-			return ret;
 		break;
 	case VVSENSORIOC_S_EXP:
 		ret = ar0521_vv_set_exposure(sensor, arg);
