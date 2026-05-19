@@ -106,6 +106,7 @@ typedef enum {
  * @wq: Workqueue for serializing any state change.
  * @dev_state: device state
  * @dev_state_change: signals when the device state changes
+<<<<<<< HEAD
  * @drv_state: driver state
  * @label: 'label' property from device tree, NULL if missing.
  * @fw_cdev: firmware character device
@@ -134,8 +135,9 @@ typedef enum {
 >>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
 =======
  * @dev_state: device state
+=======
+>>>>>>> cf4d3bec9904 (fix(drivers/bluetooth/esp_hci): fixes for previous PR)
  * @drv_state: driver state
- * @state_change: signals when the device state changes
  * @label: 'label' property from device tree, NULL if missing.
  * @fw_cdev: firmware character device
  * @fw_device: firmware device
@@ -198,9 +200,13 @@ struct esp_hci_dev {
 	struct workqueue_struct *wq;
 	esp_hci_dev_state_t dev_state;
 <<<<<<< HEAD
+<<<<<<< HEAD
 	struct wait_queue_head dev_state_change;
 =======
 >>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
+=======
+	struct wait_queue_head dev_state_change;
+>>>>>>> cf4d3bec9904 (fix(drivers/bluetooth/esp_hci): fixes for previous PR)
 	/* Changes in the driver state (including HCI core dev registration) are
 	 * triggered:
 	 * - at driver probe, before anything else
@@ -209,9 +215,12 @@ struct esp_hci_dev {
 	 * As such we don't need a lock. */
 	esp_hci_drv_state_t drv_state;
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 	struct wait_queue_head dev_state_change;
 >>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
+=======
+>>>>>>> cf4d3bec9904 (fix(drivers/bluetooth/esp_hci): fixes for previous PR)
 	char const *label;
 
 	struct cdev fw_cdev;
