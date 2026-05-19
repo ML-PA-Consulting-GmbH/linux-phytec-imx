@@ -26,8 +26,8 @@
 		reg = <1>;
 		spi-max-frequency = <5000000>;
 		hs-gpio =    <&gpio3 24 GPIO_ACTIVE_HIGH>;
-		dr-gpio =    <&gpio3 25 GPIO_ACTIVE_HIGH>; 
-		pwr-gpio =   <&gpio2  8 GPIO_ACTIVE_HIGH>; 
+		dr-gpio =    <&gpio3 25 GPIO_ACTIVE_HIGH>;
+		pwr-gpio =   <&gpio2  8 GPIO_ACTIVE_HIGH>;
 		rst-gpio =   <&gpio2  9 GPIO_ACTIVE_LOW>;
 		flash-gpio = <&gpio2 10 GPIO_ACTIVE_HIGH>;
 		label = "hmi";
