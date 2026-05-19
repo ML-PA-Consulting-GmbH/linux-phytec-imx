@@ -355,18 +355,17 @@ static int _fw_release(struct inode *inode, struct file *fp)
 	struct esp_hci_dev *esp_hci_dev =
 		container_of(inode->i_cdev, struct esp_hci_dev, fw_cdev);
 
-
-	mutex_lock(&esp_hci_dev->fw_dev_lock);
+	guard(mutex)(&esp_hci_dev->fw_dev_lock);
 
 	/* Won't do anything in case no firmware download happened. */
 	gpiod_set_value(esp_hci_dev->flash_gpio, 0);
 
-	esp_hci_dev->fw_dev_open = false;
-	mutex_unlock(&esp_hci_dev->fw_dev_lock);
-
-	wake_up_all(&esp_hci_dev->dev_state_change);
-
 	_register_hci_dev(esp_hci_dev);
+	/* This has to happen after _register_hci_dev(). esp_hci_remove() might
+	 * be waiting for this to call _unregister_hci_dev() -  we don't want
+	 * those to race. */
+	esp_hci_dev->fw_dev_open = false;
+	wake_up_all(&esp_hci_dev->dev_state_change);
 
 	return 0;
 }
@@ -432,7 +431,7 @@ static ssize_t _fw_write(struct file *fp, char const __user *buf, size_t count, 
 	dev_info(esp_hci_dev->transport_dev,
 		"esp_hci: entering FW download mode");
 
-	if (esp_hci_dev->rst_gpio == NULL) {
+	if (esp_hci_dev->flash_gpio == NULL) {
 		dev_warn(esp_hci_dev->transport_dev,
 			"esp_hci: no flash mode pin assigned, you might need to set it manually!");
 	} else {
@@ -545,7 +544,7 @@ int esp_hci_probe(struct esp_hci_dev *esp_hci_dev)
 	}
 
 	struct gpio_desc *flash_gpio = devm_gpiod_get(dev, "flash", GPIOD_OUT_LOW);
-	if (IS_ERR(pwr_gpio)) {
+	if (IS_ERR(flash_gpio)) {
 		dev_warn(dev,
 			 "HCI: no flash mode pin provided\n");
 		esp_hci_dev->flash_gpio = NULL;
