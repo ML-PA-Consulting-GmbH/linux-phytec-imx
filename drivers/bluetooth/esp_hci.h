@@ -28,23 +28,35 @@ struct esp_hci_ver {
 } __packed;
 
 /**
- * struct esp_hci_state_t - ESP HCI device state
+ * struct esp_hci_dev_state_t - Controller device state
  *
- * @ESP_HCI_STATE_CLOSED: device is powered off or in an unknown state
- * @ESP_HCI_STATE_OPENING: power on/reset sequence triggered.
- * @ESP_HCI_STATE_OPEN: the device on and is functional.
- * @ESP_HCI_STATE_FWUPD: the device is on and functional, but is performing a
- *			 firmware update. The device cannot be powered off/reset
- *			 while in this state.
+ * @ESP_HCI_DEV_STATE_CLOSED: device is powered off or in an unknown state
+ * @ESP_HCI_DEV_STATE_OPENING: power on/reset sequence triggered.
+ * @ESP_HCI_DEV_STATE_OPEN: the device on and is functional.
  *
  * ** DO NOT REORDER! **
  */
 typedef enum {
-	ESP_HCI_STATE_CLOSED = 0,
-	ESP_HCI_STATE_OPENING = 1,
-	ESP_HCI_STATE_OPEN = 2,
-	ESP_HCI_STATE_FWUPD = 3,
-} esp_hci_state_t;
+	ESP_HCI_DEV_STATE_CLOSED = 0,
+	ESP_HCI_DEV_STATE_OPENING = 1,
+	ESP_HCI_DEV_STATE_OPEN = 2,
+} esp_hci_dev_state_t;
+
+/**
+ * struct esp_hci_driver_state_t - Driver state
+ *
+ * @ESP_HCI_DRV_STATE_UNREG: The controller is not registered with the HCI core.
+ * @ESP_HCI_DRV_STATE_FWUPD: The controller is not registered with the HCI core
+ *			     and is performing an update.
+ * @ESP_HCI_DRV_STATE_REG: The controller is registered with the HCI core.
+ *
+ * ** DO NOT REORDER! **
+ */
+typedef enum {
+	ESP_HCI_DRV_STATE_UNREG = 0,
+	ESP_HCI_DRV_STATE_FWUPD = 1,
+	ESP_HCI_DRV_STATE_REG = 2,
+} esp_hci_drv_state_t;
 
 /**
  * struct esp_hci_dev - ESP HCI device structure
@@ -57,19 +69,23 @@ typedef enum {
  * @tx_paused: TX skb was full, now waiting to be drained.
  * @next_tx_seq: seq no of the next frame going out.
  * @next_rx_seq: expected seq no of the next frame coming in.
- * @pwr_gpio: Controller reset.
+ * @rst_gpio: Controller reset.
  * @pwr_gpio: Controller power supply control. May be NULL if missing.
+ * @flash_gpio: Controller flash mode control. May be NULL if missing.
  * @caps: Capabilities flags.
  * @hci_dev: Kernel HCI core device.
  * @wq: Workqueue for serializing any state change.
- * @state: device state
+ * @dev_state: device state
+ * @drv_state: driver state
  * @state_change: signals when the device state changes
  * @label: 'label' property from device tree, NULL if missing.
  * @fw_cdev: firmware character device
  * @fw_device: firmware device
  * @fw_dev_lock: serializes fw device file operations
+ * @fw_dev_open: is the firmware file open
  * @fw_ver: firmware version, set when device boots
  * @framing_ver: transport framing version, set when device boots
+ * @fw_ver_lock: Mutex for the firmware/framing versions.
  * @ver_str: storage for the version string, read by the firmware character dev
  */
 struct esp_hci_dev {
@@ -106,19 +122,29 @@ struct esp_hci_dev {
 
 	struct gpio_desc *rst_gpio;
 	struct gpio_desc *pwr_gpio;
+	struct gpio_desc *flash_gpio;
 	unsigned caps;
 	struct hci_dev *hci_dev;
 	struct workqueue_struct *wq;
-	esp_hci_state_t state;
-	struct wait_queue_head state_change;
+	esp_hci_dev_state_t dev_state;
+	/* Changes in the driver state (including HCI core dev registration) are
+	 * triggered:
+	 * - at driver probe, before anything else
+	 * - by the FW update device, and this is serialized by @fw_dev_lock
+	 * - at driver remove, after the FW update device is closed
+	 * As such we don't need a lock. */
+	esp_hci_drv_state_t drv_state;
+	struct wait_queue_head dev_state_change;
 	char const *label;
 
 	struct cdev fw_cdev;
 	struct device *fw_device;
 	struct mutex fw_dev_lock;
+	bool fw_dev_open;
 
 	struct esp_hci_ver fw_ver;
 	struct esp_hci_ver framing_ver;
+	struct mutex fw_ver_lock;
 
 	char ver_str[80];
 };
