@@ -162,6 +162,7 @@ static void __maybe_unused _debug_header(struct esp_payload_header const *hdr,
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 /* For some reason, unregistering and registering will not work, I guess this
  * just off the beaten path. So, we always init clean. */
 static int _register_hci_dev(struct esp_hci_dev *esp_hci_dev)
@@ -195,11 +196,44 @@ static int _register_hci_dev(struct esp_hci_dev *esp_hci_dev)
 		hci_free_dev(hci_dev);
 		esp_hci_dev->hci_dev = NULL;
 =======
+=======
+/* For some reason, unregistering and registering will not work, I guess this
+ * just off the beaten path. So, we always init clean. */
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 static int _register_hci_dev(struct esp_hci_dev *esp_hci_dev)
 {
+	if (esp_hci_dev->drv_state == ESP_HCI_DRV_STATE_REG) {
+		dev_warn(esp_hci_dev->transport_dev, "HCI: HCI dev already registered");
+		return 0;
+	}
+
+	BUG_ON(esp_hci_dev->hci_dev);
+
+	struct hci_dev *hci_dev = hci_alloc_dev();
+	if (!hci_dev) {
+		dev_err(esp_hci_dev->transport_dev, "HCI: hci_alloc_dev err\n");
+		return -ENOMEM;
+	}
+
+	esp_hci_dev->hci_dev = hci_dev;
+
+	hci_set_drvdata(hci_dev, esp_hci_dev);
+
+	hci_dev->bus = esp_hci_dev->type;
+	hci_dev->close = esp_hci_close;
+	hci_dev->open = esp_hci_open;
+	hci_dev->send = esp_hci_send;
+	hci_dev->reset = esp_hci_reset;
+	hci_dev->flush = esp_hci_flush;
+
 	int res = hci_register_dev(esp_hci_dev->hci_dev);
 	if (res < 0) {
+<<<<<<< HEAD
 >>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
+=======
+		hci_free_dev(hci_dev);
+		esp_hci_dev->hci_dev = NULL;
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 		dev_err(esp_hci_dev->transport_dev,
 			"HCI: cannot register HCI dev: %d\n", res);
 		return res;
@@ -207,9 +241,13 @@ static int _register_hci_dev(struct esp_hci_dev *esp_hci_dev)
 
 	dev_info(esp_hci_dev->transport_dev, "HCI: registered HCI dev\n");
 <<<<<<< HEAD
+<<<<<<< HEAD
 	esp_hci_dev->drv_state = ESP_HCI_DRV_STATE_REG;
 =======
 >>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
+=======
+	esp_hci_dev->drv_state = ESP_HCI_DRV_STATE_REG;
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 
 	return 0;
 }
@@ -217,10 +255,14 @@ static int _register_hci_dev(struct esp_hci_dev *esp_hci_dev)
 static void _unregister_hci_dev(struct esp_hci_dev *esp_hci_dev)
 {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 	if (esp_hci_dev->drv_state < ESP_HCI_DRV_STATE_REG) {
 		dev_warn(esp_hci_dev->transport_dev, "HCI: HCI dev already unregistered");
 		return;
 	}
+<<<<<<< HEAD
 
 	/* Oops if the HCI dev was already unregistered. */
 	hci_unregister_dev(esp_hci_dev->hci_dev);
@@ -250,6 +292,23 @@ static int esp_hci_open(struct hci_dev *hdev)
 	flush_work(&esp_hci_dev->close_work.work);
 
 >>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
+=======
+
+	/* Oops if the HCI dev was already unregistered. */
+	hci_unregister_dev(esp_hci_dev->hci_dev);
+	dev_info(esp_hci_dev->transport_dev, "HCI: unregistered HCI dev\n");
+
+	flush_workqueue(esp_hci_dev->wq);
+
+	hci_free_dev(esp_hci_dev->hci_dev);
+	esp_hci_dev->hci_dev = NULL;
+
+	esp_hci_dev->drv_state = ESP_HCI_DRV_STATE_UNREG;
+}
+
+static void _power_on_reset(struct esp_hci_dev *esp_hci_dev)
+{
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 	/* If power pin is not supported, trigger a reset to put the controller
 	 * in a clean state. Otherwise this won't do anything, as the dev should
 	 * be off.*/
@@ -259,6 +318,9 @@ static int esp_hci_open(struct hci_dev *hdev)
 
 	gpiod_set_value(esp_hci_dev->pwr_gpio, 1);
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 }
 
 static void esp_hci_open_work(struct work_struct *work)
@@ -455,6 +517,9 @@ static int esp_hci_send(struct hci_dev *hdev, struct sk_buff *skb)
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 static int _fw_open(struct inode *inode, struct file *fp)
 {
 	struct esp_hci_dev *esp_hci_dev =
@@ -476,8 +541,8 @@ static int _fw_release(struct inode *inode, struct file *fp)
 	struct esp_hci_dev *esp_hci_dev =
 		container_of(inode->i_cdev, struct esp_hci_dev, fw_cdev);
 
-	guard(mutex)(&esp_hci_dev->fw_dev_lock);
 
+<<<<<<< HEAD
 	/* Won't do anything in case no firmware download happened. */
 	gpiod_set_value(esp_hci_dev->flash_gpio, 0);
 
@@ -487,6 +552,19 @@ static int _fw_release(struct inode *inode, struct file *fp)
 	 * those to race. */
 	esp_hci_dev->fw_dev_open = false;
 	wake_up_all(&esp_hci_dev->dev_state_change);
+=======
+	mutex_lock(&esp_hci_dev->fw_dev_lock);
+
+	/* Won't do anything in case no firmware download happened. */
+	gpiod_set_value(esp_hci_dev->flash_gpio, 0);
+
+	esp_hci_dev->fw_dev_open = false;
+	mutex_unlock(&esp_hci_dev->fw_dev_lock);
+
+	wake_up_all(&esp_hci_dev->dev_state_change);
+
+	_register_hci_dev(esp_hci_dev);
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 
 	return 0;
 }
@@ -552,7 +630,11 @@ static ssize_t _fw_write(struct file *fp, char const __user *buf, size_t count, 
 	dev_info(esp_hci_dev->transport_dev,
 		"esp_hci: entering FW download mode");
 
+<<<<<<< HEAD
 	if (esp_hci_dev->flash_gpio == NULL) {
+=======
+	if (esp_hci_dev->rst_gpio == NULL) {
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 		dev_warn(esp_hci_dev->transport_dev,
 			"esp_hci: no flash mode pin assigned, you might need to set it manually!");
 	} else {
@@ -650,9 +732,12 @@ int esp_hci_probe(struct esp_hci_dev *esp_hci_dev)
 <<<<<<< HEAD
 	skb_queue_head_init(&esp_hci_dev->tx_queue);
 	init_waitqueue_head(&esp_hci_dev->dev_state_change);
+<<<<<<< HEAD
 =======
 	init_waitqueue_head(&esp_hci_dev->wait_open);
 >>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
+=======
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 	struct gpio_desc *rst_gpio = devm_gpiod_get(dev, "rst", GPIOD_OUT_LOW);
 	if (IS_ERR(rst_gpio)) {
 		dev_err(dev, "HCI: gpio init err: rst=%ld\n",
@@ -662,6 +747,7 @@ int esp_hci_probe(struct esp_hci_dev *esp_hci_dev)
 	esp_hci_dev->rst_gpio = rst_gpio;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	struct gpio_desc *pwr_gpio = devm_gpiod_get(dev, "pwr", GPIOD_OUT_LOW);
 =======
 	INIT_WORK(&esp_hci_dev->close_work.work, esp_hci_close_work);
@@ -669,6 +755,9 @@ int esp_hci_probe(struct esp_hci_dev *esp_hci_dev)
 
 	struct gpio_desc *pwr_gpio = devm_gpiod_get(dev, "pwr", GPIOD_OUT_HIGH);
 >>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
+=======
+	struct gpio_desc *pwr_gpio = devm_gpiod_get(dev, "pwr", GPIOD_OUT_LOW);
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 	if (IS_ERR(pwr_gpio)) {
 		dev_warn(dev,
 			 "HCI: no power pin provided, assuming always on.\n");
@@ -678,8 +767,13 @@ int esp_hci_probe(struct esp_hci_dev *esp_hci_dev)
 	}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	struct gpio_desc *flash_gpio = devm_gpiod_get(dev, "flash", GPIOD_OUT_LOW);
 	if (IS_ERR(flash_gpio)) {
+=======
+	struct gpio_desc *flash_gpio = devm_gpiod_get(dev, "flash", GPIOD_OUT_LOW);
+	if (IS_ERR(pwr_gpio)) {
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 		dev_warn(dev,
 			 "HCI: no flash mode pin provided\n");
 		esp_hci_dev->flash_gpio = NULL;
@@ -688,13 +782,17 @@ int esp_hci_probe(struct esp_hci_dev *esp_hci_dev)
 	}
 
 
+<<<<<<< HEAD
 =======
 >>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
+=======
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 	esp_hci_dev->wq = alloc_ordered_workqueue("esp_spi", 0);
 	if (!esp_hci_dev->wq) {
 		return -ENOMEM;
 	}
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 	esp_hci_dev->dev_state = ESP_HCI_DEV_STATE_CLOSED;
 
@@ -721,21 +819,31 @@ int esp_hci_probe(struct esp_hci_dev *esp_hci_dev)
 		destroy_workqueue(esp_hci_dev->wq);
 		return -ENOMEM;
 	}
+=======
+	esp_hci_dev->dev_state = ESP_HCI_DEV_STATE_CLOSED;
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 
-	hci_set_drvdata(hci_dev, esp_hci_dev);
-	esp_hci_dev->hci_dev = hci_dev;
-
-	hci_dev->bus = esp_hci_dev->type;
-	hci_dev->close = esp_hci_close;
-	hci_dev->open = esp_hci_open;
-	hci_dev->send = esp_hci_send;
-	hci_dev->reset = esp_hci_reset;
-	hci_dev->flush = esp_hci_flush;
+	mutex_init(&esp_hci_dev->fw_ver_lock);
 
 	int res = _register_hci_dev(esp_hci_dev);
 	if (res < 0) {
+<<<<<<< HEAD
 		hci_free_dev(hci_dev);
 >>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
+=======
+		destroy_workqueue(esp_hci_dev->wq);
+		return res;
+	}
+
+	res = of_property_read_string(dev->of_node, "label", &esp_hci_dev->label);
+	if (res < 0) {
+		dev_warn(dev, "HCI: device missing 'label' property in DT! (%d)", res);
+	}
+
+	res = _create_fwdev(esp_hci_dev);
+	if (res < 0) {
+		_unregister_hci_dev(esp_hci_dev);
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 		destroy_workqueue(esp_hci_dev->wq);
 		return res;
 	}
@@ -744,6 +852,9 @@ int esp_hci_probe(struct esp_hci_dev *esp_hci_dev)
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 EXPORT_SYMBOL(esp_hci_remove);
 void esp_hci_remove(struct esp_hci_dev *esp_hci_dev)
 {
@@ -836,6 +947,9 @@ static int _check_api_ver(struct esp_hci_dev *esp_hci_dev,
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 static void update_fw_ver_info(struct esp_hci_dev *esp_hci_dev,
 			       struct esp_hci_ver const *framing,
 			       struct esp_hci_ver const *fw)
@@ -846,8 +960,11 @@ static void update_fw_ver_info(struct esp_hci_dev *esp_hci_dev,
 	esp_hci_dev->fw_ver = *fw;
 }
 
+<<<<<<< HEAD
 =======
 >>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
+=======
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 static int process_event_esp_bootup(struct esp_hci_dev *esp_hci_dev,
 				    struct sk_buff *skb)
 {
@@ -867,6 +984,12 @@ static int process_event_esp_bootup(struct esp_hci_dev *esp_hci_dev,
 	int res = 0;
 
 	esp_hci_dev->caps = 0;
+<<<<<<< HEAD
+=======
+
+	struct esp_hci_ver framing_ver = { 0 };
+	struct esp_hci_ver fw_ver = { 0 };
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 
 	struct esp_hci_ver framing_ver = { 0 };
 	struct esp_hci_ver fw_ver = { 0 };
@@ -952,6 +1075,9 @@ static int process_event_esp_bootup(struct esp_hci_dev *esp_hci_dev,
 	}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 	update_fw_ver_info(esp_hci_dev, &framing_ver, &fw_ver);
 
 	dev_info(dev, "HCI: FW ver = %d.%d.%d\n", esp_hci_dev->fw_ver.major,
@@ -966,6 +1092,7 @@ static int process_event_esp_bootup(struct esp_hci_dev *esp_hci_dev,
 		dev_info(dev, "HCI: ESP supports HCI\n");
 
 		_state_change(esp_hci_dev, ESP_HCI_DEV_STATE_OPEN);
+<<<<<<< HEAD
 =======
 	if (esp_hci_dev->caps & ESP_BT_SUPPORT) {
 		dev_info(dev, "HCI: ESP supports HCI\n");
@@ -973,6 +1100,8 @@ static int process_event_esp_bootup(struct esp_hci_dev *esp_hci_dev,
 		esp_hci_dev->is_open = true;
 		wake_up(&esp_hci_dev->wait_open);
 >>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
+=======
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 	} else {
 		dev_err(dev, "HCI: ESP does not support HCI\n");
 		goto fail;
@@ -985,10 +1114,14 @@ static int process_event_esp_bootup(struct esp_hci_dev *esp_hci_dev,
 fail:
 	dev_err(dev, "HCI: ESP bootup failure\n");
 <<<<<<< HEAD
+<<<<<<< HEAD
 	_state_change(esp_hci_dev, ESP_HCI_DEV_STATE_CLOSED);
 =======
 	esp_hci_dev->is_open = false;
 >>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
+=======
+	_state_change(esp_hci_dev, ESP_HCI_DEV_STATE_CLOSED);
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 
 	return res;
 }
@@ -1088,6 +1221,9 @@ void esp_hci_rcv_pkt(struct esp_hci_dev *esp_hci_dev, struct sk_buff *_skb)
 	switch ((enum ESP_INTERFACE_TYPE)hdr.if_type) {
 	case ESP_INTERNAL_IF:
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 		if (esp_hci_dev->dev_state > ESP_HCI_DEV_STATE_CLOSED) {
 			process_internal_event(esp_hci_dev, skb);
 		}
@@ -1095,6 +1231,7 @@ void esp_hci_rcv_pkt(struct esp_hci_dev *esp_hci_dev, struct sk_buff *_skb)
 
 	case ESP_HCI_IF:
 		if (esp_hci_dev->dev_state < ESP_HCI_DEV_STATE_OPEN) {
+<<<<<<< HEAD
 =======
 		process_internal_event(esp_hci_dev, skb);
 		break;
@@ -1102,6 +1239,8 @@ void esp_hci_rcv_pkt(struct esp_hci_dev *esp_hci_dev, struct sk_buff *_skb)
 	case ESP_HCI_IF:
 		if (!esp_hci_dev->is_open) {
 >>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
+=======
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 			dev_warn_ratelimited(dev,
 					     "HCI: %s: HCI packet for closed device!\n",
 					     __func__);

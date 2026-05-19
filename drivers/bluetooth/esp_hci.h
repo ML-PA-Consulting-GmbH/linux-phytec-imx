@@ -45,6 +45,25 @@ typedef enum {
 	ESP_HCI_DEV_STATE_OPENING = 1,
 	ESP_HCI_DEV_STATE_OPEN = 2,
 } esp_hci_dev_state_t;
+<<<<<<< HEAD
+=======
+
+/**
+ * struct esp_hci_driver_state_t - Driver state
+ *
+ * @ESP_HCI_DRV_STATE_UNREG: The controller is not registered with the HCI core.
+ * @ESP_HCI_DRV_STATE_FWUPD: The controller is not registered with the HCI core
+ *			     and is performing an update.
+ * @ESP_HCI_DRV_STATE_REG: The controller is registered with the HCI core.
+ *
+ * ** DO NOT REORDER! **
+ */
+typedef enum {
+	ESP_HCI_DRV_STATE_UNREG = 0,
+	ESP_HCI_DRV_STATE_FWUPD = 1,
+	ESP_HCI_DRV_STATE_REG = 2,
+} esp_hci_drv_state_t;
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 
 /**
  * struct esp_hci_driver_state_t - Driver state
@@ -79,6 +98,7 @@ typedef enum {
  * @next_tx_seq: seq no of the next frame going out.
  * @next_rx_seq: expected seq no of the next frame coming in.
  * @rst_gpio: Controller reset.
+<<<<<<< HEAD
  * @pwr_gpio: Controller power supply control. May be NULL if missing.
  * @flash_gpio: Controller flash mode control. May be NULL if missing.
  * @caps: Capabilities flags.
@@ -98,16 +118,34 @@ typedef enum {
  * @ver_str: storage for the version string, read by the firmware character dev
 =======
  * @pwr_gpio: Controller reset.
+=======
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
  * @pwr_gpio: Controller power supply control. May be NULL if missing.
+ * @flash_gpio: Controller flash mode control. May be NULL if missing.
  * @caps: Capabilities flags.
  * @hci_dev: Kernel HCI core device.
  * @wq: Workqueue for serializing any state change.
+<<<<<<< HEAD
  * @next_tx_seq: seq no of the next frame going out.
  * @next_rx_seq: expected seq no of the next frame coming in.
  * @is_open: device is up and ready
  * @wait_open: signals when the device is booted
  * @close_work: synchronize device close with the device wq
 >>>>>>> c480688442c1 (feat(drivers/bluetooth/esp_hci): added ESP HCI SPI driver)
+=======
+ * @dev_state: device state
+ * @drv_state: driver state
+ * @state_change: signals when the device state changes
+ * @label: 'label' property from device tree, NULL if missing.
+ * @fw_cdev: firmware character device
+ * @fw_device: firmware device
+ * @fw_dev_lock: serializes fw device file operations
+ * @fw_dev_open: is the firmware file open
+ * @fw_ver: firmware version, set when device boots
+ * @framing_ver: transport framing version, set when device boots
+ * @fw_ver_lock: Mutex for the firmware/framing versions.
+ * @ver_str: storage for the version string, read by the firmware character dev
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
  */
 struct esp_hci_dev {
 	/* The following fields are set up by the transport layer before calling
@@ -159,7 +197,10 @@ struct esp_hci_dev {
 	struct hci_dev *hci_dev;
 	struct workqueue_struct *wq;
 	esp_hci_dev_state_t dev_state;
+<<<<<<< HEAD
 	struct wait_queue_head dev_state_change;
+=======
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 	/* Changes in the driver state (including HCI core dev registration) are
 	 * triggered:
 	 * - at driver probe, before anything else
@@ -167,6 +208,10 @@ struct esp_hci_dev {
 	 * - at driver remove, after the FW update device is closed
 	 * As such we don't need a lock. */
 	esp_hci_drv_state_t drv_state;
+<<<<<<< HEAD
+=======
+	struct wait_queue_head dev_state_change;
+>>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
 	char const *label;
 
 	struct cdev fw_cdev;
