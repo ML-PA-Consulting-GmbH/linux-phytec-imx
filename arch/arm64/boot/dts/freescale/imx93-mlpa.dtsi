@@ -19,65 +19,100 @@
 
 	aliases {
 		ethernet1 = &eqos;
+		gpio0 = &gpio1;
+		gpio1 = &gpio2;
+		gpio2 = &gpio3;
+		gpio3 = &gpio4;
+		i2c0 = &lpi2c1;
+		i2c1 = &lpi2c2;
+		mmc0 = &usdhc1;
+		mmc1 = &usdhc2;
 		rtc0 = &i2c_rtc;
 		rtc1 = &bbnsm_rtc;
+		serial0 = &lpuart1;
+		serial1 = &lpuart2;
+		serial2 = &lpuart3;
+		serial3 = &lpuart4;
+		serial4 = &lpuart5;
+		serial5 = &lpuart6;
+		serial6 = &lpuart7;
+		spi0 = &lpspi1;
+		spi1 = &lpspi2;
+		spi2 = &lpspi3;
+		spi3 = &lpspi4;
+		spi4 = &lpspi5;
+		spi5 = &lpspi6;
 	};
-
 	chosen {
 		stdout-path = &lpuart1;
 	};
 
-	/* M-R-SN65HVD234.A0 */
-	reg_can1_en: regulator-can1 {
-		compatible = "regulator-fixed";
-		gpio = <&gpio4 16 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_flexcan1_en>;
-		regulator-max-microvolt = <3300000>;
-		regulator-min-microvolt = <3300000>;
-		regulator-name = "CAN1_EN";
-	};
-	reg_usb_otg1_vbus: regulator-usb-otg1-vbus {
-		compatible = "regulator-fixed";
-		regulator-name = "USB_OTG1_VBUS";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-		regulator-always-on;
+	curr_sens: current-sense {
+		compatible = "current-sense-amplifier";
+		#io-channel-cells = <0>;
+		io-channels = <&adc1 1>;
+		sense-gain-div = <2>;
+		sense-gain-mult = <50>;
+		sense-resistor-micro-ohms = <35000>;
 	};
 
-	reg_usb_otg2_vbus: regulator-usb-otg2-vbus {
-		compatible = "regulator-fixed";
-		regulator-name = "USB_OTG2_VBUS";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-		regulator-always-on;
+	flexcan1_tc: can-phy0 {
+		compatible = "ti,tcan1042";
+		#phy-cells = <0>;
+		max-bitrate = <8000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_flexcan1_tc>;
+		standby-gpios = <&gpio4 16 GPIO_ACTIVE_HIGH>;
 	};
+
+	iio-hwmon {
+		compatible = "iio-hwmon";
+		io-channels = <&curr_sens 0>;
+	};
+
 	reg_usdhc2_vmmc: regulator-usdhc2 {
 		compatible = "regulator-fixed";
 		gpio = <&gpio3 7 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_reg_usdhc2_vmmc>;
+		regulator-name = "VCC_SD";
 		regulator-max-microvolt = <3300000>;
 		regulator-min-microvolt = <3300000>;
-		regulator-name = "VCC_SD";
 	};
 
-	reg_vcc_1v8_audio: regulator-vcc1v8-audio {
+	reg_vcc_1v8: regulator-vcc-1v8 {
 		compatible = "regulator-fixed";
+		regulator-name = "VCC1V8";
 		regulator-max-microvolt = <1800000>;
 		regulator-min-microvolt = <1800000>;
-		regulator-name = "VCC1V8_AUDIO";
 	};
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
 
-	reg_vcc_3v3: regulator-vcc-3v3 {
-		compatible = "regulator-fixed";
-		regulator-max-microvolt = <3300000>;
-		regulator-min-microvolt = <3300000>;
-		regulator-name = "VCC3V3";
+		ele_reserved: ele-reserved@a4120000 {
+			compatible = "shared-dma-pool";
+			reg = <0 0xa4120000 0 0x100000>;
+			no-map;
+		};
 	};
+};
 
+&ele_fw2 {
+    memory-region = <&ele_reserved>;
+};
+
+/* ADC */
+&adc1 {
+	status = "okay";
+};
+
+/* Power-key */
+&bbnsm_pwrkey {
+	linux,keycode = <KEY_POWER>;
+	wakeup-source;
 };
 
 /* Ethernet */
@@ -90,41 +125,61 @@
 	pinctrl-0 = <&pinctrl_eqos>;
 	phy-mode = "rmii";
 	phy-handle = <&ethphy2>;
+	assigned-clocks = <&clk IMX93_CLK_ENET_TIMER2>,
+			  <&clk IMX93_CLK_ENET>;
 	assigned-clock-parents = <&clk IMX93_CLK_SYS_PLL_PFD1_DIV2>,
 				 <&clk IMX93_CLK_SYS_PLL_PFD1_DIV2>;
 	assigned-clock-rates = <100000000>, <50000000>;
 	status = "okay";
 };
 
+/* ENET2 MDIO */
 &mdio {
 	ethphy2: ethernet-phy@2 {
-		compatible = "ethernet-phy-id0022.1561";
 		reg = <2>;
+		micrel,led-mode = <1>;
+		compatible = "ethernet-phy-id0022.1561";
+
+		/*
+		 * HACK:
+		 * IMX93_CLK_ENET is the ref clock and should be running at 50Mhz.
+		 * Using it here to tell the PHY we are running at 50MHz is not working.
+		 * Let us simply use another clock here.
+		 */
+		/* clocks = <&clk IMX93_CLK_ENET>; */
 		clocks = <&clk IMX93_CLK_ENET_REF_PHY>;
 		clock-names = "rmii-ref";
-		micrel,led-mode = <1>;
 	};
 };
+
+/* CAN */
+&flexcan1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_flexcan1>;
+	phys = <&flexcan1_tc>;
+	status = "okay";
+};
+
+/* I2C2 */
 &lpi2c2 {
 	clock-frequency = <400000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpi2c2>;
-	#address-cells = <1>;
-	#size-cells = <0>;
 	status = "okay";
+
 
 	/* EEPROM */
 	eeprom@50 {
 	compatible = "microchip,24cs08", "atmel,24cs08";
 	reg = <0x50>;
-	vcc-supply = <&reg_vcc_1v8_audio>;
+	vcc-supply = <&reg_vcc_1v8>;
 	};
 
 	/* EEPROM ID page */
 	eepromid@51 {
 	compatible = "microchip,24cs08", "atmel,24cs08";
 	reg = <0x51>;
-	vcc-supply = <&reg_vcc_1v8_audio>;
+	vcc-supply = <&reg_vcc_1v8>;
 	};
 
 	i2c_rtc: rtc@52 {
@@ -141,7 +196,7 @@
 		compatible = "atmel,24c32";
 		reg = <0x54>;
 		pagesize = <32>;
-		vcc-supply = <&reg_vcc_1v8_audio>;
+		vcc-supply = <&reg_vcc_1v8>;
 	};
 
 	/* EEPROM ID page */
@@ -150,7 +205,7 @@
 		reg = <0x5c>;
 		pagesize = <32>;
 		size = <32>;
-		vcc-supply = <&reg_vcc_1v8_audio>;
+		vcc-supply = <&reg_vcc_1v8>;
 	};
 };
 
@@ -161,15 +216,14 @@
 	status = "okay";
 };
 
-/* USB  */
-&usbphynop1 {
-	vbus-supply = <&reg_usb_otg1_vbus>;
+/* RS-232/RS-485 */
+&lpuart7 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart7>;
+	status = "okay";
 };
 
-&usbphynop2 {
-	vbus-supply = <&reg_usb_otg2_vbus>;
-};
-
+/* USB */
 &usbotg1 {
 	disable-over-current;
 	dr_mode = "host";
@@ -206,14 +260,20 @@
 };
 
 
+/* DT arrays cannot be extended. If a board extends the LPSPI1 bus, it needs to 
+ * re-define 'cs-gpios' and 'num-chipselects'. We define these as macros to avoid
+ * copy-paste. */
+#define IMX93_MLPA_LPSPI1_NUM_CHIPSELECTS	1
+#define IMX93_MLPA_LPSPI1_CS_GPIOS		&gpio1 11 0
+
 &lpspi1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpspi1>;
-	cs-gpios =	<&gpio1 11 0>; 	 
+	cs-gpios = <IMX93_MLPA_LPSPI1_CS_GPIOS>; 	 
 	status = "okay";
-	num-chipselects = <1>;
+	num-chipselects = <IMX93_MLPA_LPSPI1_NUM_CHIPSELECTS>;
 	/* TPM */
 	tpm0: tpm@0 {
 		compatible = "tcg,tpm_tis-spi","infineon,slb9670";
@@ -239,14 +299,14 @@
 	eeprom@50 {
 	compatible = "microchip,24cs08", "atmel,24cs08";
 	reg = <0x50>;
-	vcc-supply = <&reg_vcc_1v8_audio>;
+	vcc-supply = <&reg_vcc_1v8>;
 	};
 
 	/* EEPROM ID page */
 	eepromid@51 {
 	compatible = "microchip,24cs08", "atmel,24cs08";
 	reg = <0x51>;
-	vcc-supply = <&reg_vcc_1v8_audio>;
+	vcc-supply = <&reg_vcc_1v8>;
 	};
 };
 
@@ -287,16 +347,17 @@
 
 	pinctrl_eqos: eqosgrp {
 		fsl,pins = <
-			MX93_PAD_ENET1_TD2__CCM_ENET_QOS_CLOCK_GENERATE_REF_CLK	0x4000050e
-			MX93_PAD_ENET1_RD0__ENET_QOS_RGMII_RD0		0x57e
-			MX93_PAD_ENET1_RD1__ENET_QOS_RGMII_RD1		0x57e
-			MX93_PAD_ENET1_TD0__ENET_QOS_RGMII_TD0		0x50e
-			MX93_PAD_ENET1_TD1__ENET_QOS_RGMII_TD1		0x50e
-			MX93_PAD_ENET1_RX_CTL__ENET_QOS_RGMII_RX_CTL	0x57e
-			MX93_PAD_ENET1_TX_CTL__ENET_QOS_RGMII_TX_CTL	0x50e
-			MX93_PAD_ENET1_RXC__ENET_QOS_RX_ER		0x57e
+			MX93_PAD_ENET1_TD2__CCM_ENET_QOS_CLOCK_GENERATE_REF_CLK 0x4000050e
+			MX93_PAD_ENET1_RD0__ENET_QOS_RGMII_RD0			0x57e
+			MX93_PAD_ENET1_RD1__ENET_QOS_RGMII_RD1			0x57e
+			MX93_PAD_ENET1_TD0__ENET_QOS_RGMII_TD0			0x50e
+			MX93_PAD_ENET1_TD1__ENET_QOS_RGMII_TD1			0x50e
+			MX93_PAD_ENET1_RX_CTL__ENET_QOS_RGMII_RX_CTL		0x57e
+			MX93_PAD_ENET1_TX_CTL__ENET_QOS_RGMII_TX_CTL		0x50e
+			MX93_PAD_ENET1_RXC__ENET_QOS_RX_ER			0x57e
 		>;
 	};
+
 
 	pinctrl_lpi2c2: lpi2c2grp {
 		fsl,pins = <
@@ -331,6 +392,12 @@
 		>;
 	};
 
+	pinctrl_flexcan1_tc: flexcan1tcgrp {
+		fsl,pins = <
+			MX93_PAD_ENET2_TD3__GPIO4_IO16		0x31e
+		>;
+	};
+
 	pinctrl_flexcan1_en: flexcan1engrp {
 		fsl,pins = <
 			MX93_PAD_ENET2_TD3__GPIO4_IO16		0x31e
@@ -347,6 +414,15 @@
 	pinctrl_usdhc2_cd: usdhc2cdgrp {
 		fsl,pins = <
 			MX93_PAD_SD2_CD_B__GPIO3_IO00		0x31e
+		>;
+	};
+
+	pinctrl_uart7: uart7grp {
+		fsl,pins = <
+			MX93_PAD_GPIO_IO08__LPUART7_TX		0x30e
+			MX93_PAD_GPIO_IO09__LPUART7_RX		0x31e
+			MX93_PAD_GPIO_IO10__LPUART7_CTS_B	0x31e
+			MX93_PAD_GPIO_IO11__LPUART7_RTS_B	0x31e
 		>;
 	};
 
