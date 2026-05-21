@@ -76,8 +76,8 @@ typedef enum {
  * @hci_dev: Kernel HCI core device.
  * @wq: Workqueue for serializing any state change.
  * @dev_state: device state
+ * @dev_state_change: signals when the device state changes
  * @drv_state: driver state
- * @state_change: signals when the device state changes
  * @label: 'label' property from device tree, NULL if missing.
  * @fw_cdev: firmware character device
  * @fw_device: firmware device
@@ -127,6 +127,7 @@ struct esp_hci_dev {
 	struct hci_dev *hci_dev;
 	struct workqueue_struct *wq;
 	esp_hci_dev_state_t dev_state;
+	struct wait_queue_head dev_state_change;
 	/* Changes in the driver state (including HCI core dev registration) are
 	 * triggered:
 	 * - at driver probe, before anything else
@@ -134,7 +135,6 @@ struct esp_hci_dev {
 	 * - at driver remove, after the FW update device is closed
 	 * As such we don't need a lock. */
 	esp_hci_drv_state_t drv_state;
-	struct wait_queue_head dev_state_change;
 	char const *label;
 
 	struct cdev fw_cdev;
