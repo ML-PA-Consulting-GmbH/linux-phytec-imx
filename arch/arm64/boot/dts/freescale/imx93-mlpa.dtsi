@@ -27,6 +27,17 @@
 		stdout-path = &lpuart1;
 	};
 
+	/* M-R-SN65HVD234.A0 */
+	reg_can1_en: regulator-can1 {
+		compatible = "regulator-fixed";
+		gpio = <&gpio4 16 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_flexcan1_en>;
+		regulator-max-microvolt = <3300000>;
+		regulator-min-microvolt = <3300000>;
+		regulator-name = "CAN1_EN";
+	};
 	reg_usb_otg1_vbus: regulator-usb-otg1-vbus {
 		compatible = "regulator-fixed";
 		regulator-name = "USB_OTG1_VBUS";
@@ -42,17 +53,31 @@
 		regulator-max-microvolt = <5000000>;
 		regulator-always-on;
 	};
-
 	reg_usdhc2_vmmc: regulator-usdhc2 {
 		compatible = "regulator-fixed";
-		enable-active-high;
 		gpio = <&gpio3 7 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_reg_usdhc2_vmmc>;
-		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
+		regulator-min-microvolt = <3300000>;
 		regulator-name = "VCC_SD";
 	};
+
+	reg_vcc_1v8_audio: regulator-vcc1v8-audio {
+		compatible = "regulator-fixed";
+		regulator-max-microvolt = <1800000>;
+		regulator-min-microvolt = <1800000>;
+		regulator-name = "VCC1V8_AUDIO";
+	};
+
+	reg_vcc_3v3: regulator-vcc-3v3 {
+		compatible = "regulator-fixed";
+		regulator-max-microvolt = <3300000>;
+		regulator-min-microvolt = <3300000>;
+		regulator-name = "VCC3V3";
+	};
+
 };
 
 /* Ethernet */
@@ -80,25 +105,52 @@
 		micrel,led-mode = <1>;
 	};
 };
-
-/* I2C2 */
 &lpi2c2 {
 	clock-frequency = <400000>;
-	pinctrl-names = "default", "gpio";
+	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpi2c2>;
-	pinctrl-1 = <&pinctrl_lpi2c2_gpio>;
-	scl-gpios = <&gpio1 2 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-	sda-gpios = <&gpio1 3 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 
-	/* RTC */
-	i2c_rtc: rtc@68 {
-		compatible = "microcrystal,rv4162";
-		reg = <0x68>;
+	/* EEPROM */
+	eeprom@50 {
+	compatible = "microchip,24cs08", "atmel,24cs08";
+	reg = <0x50>;
+	vcc-supply = <&reg_vcc_1v8_audio>;
+	};
+
+	/* EEPROM ID page */
+	eepromid@51 {
+	compatible = "microchip,24cs08", "atmel,24cs08";
+	reg = <0x51>;
+	vcc-supply = <&reg_vcc_1v8_audio>;
+	};
+
+	i2c_rtc: rtc@52 {
+		compatible = "microcrystal,rv3028";
+		reg = <0x52>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_rtc>;
 		interrupt-parent = <&gpio4>;
 		interrupts = <26 IRQ_TYPE_LEVEL_LOW>;
+	};
+
+	/* EEPROM */
+	eeprom@54 {
+		compatible = "atmel,24c32";
+		reg = <0x54>;
+		pagesize = <32>;
+		vcc-supply = <&reg_vcc_1v8_audio>;
+	};
+
+	/* EEPROM ID page */
+	eepromid@5c {
+		compatible = "atmel,24c32";
+		reg = <0x5c>;
+		pagesize = <32>;
+		size = <32>;
+		vcc-supply = <&reg_vcc_1v8_audio>;
 	};
 };
 
@@ -166,12 +218,35 @@
 	tpm0: tpm@0 {
 		compatible = "tcg,tpm_tis-spi","infineon,slb9670";
 		reg = <0>;
-		spi-max-frequency = <10000000>;
+		spi-max-frequency = <500000>;
 		interrupts = <29 IRQ_TYPE_LEVEL_LOW>;
 		interrupt-parent = <&gpio4>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_tpm>;
 		status = "okay";
+	};
+};
+
+&lpi2c1 {
+	clock-frequency = <400000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpi2c1>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+
+	/* EEPROM */
+	eeprom@50 {
+	compatible = "microchip,24cs08", "atmel,24cs08";
+	reg = <0x50>;
+	vcc-supply = <&reg_vcc_1v8_audio>;
+	};
+
+	/* EEPROM ID page */
+	eepromid@51 {
+	compatible = "microchip,24cs08", "atmel,24cs08";
+	reg = <0x51>;
+	vcc-supply = <&reg_vcc_1v8_audio>;
 	};
 };
 
@@ -190,7 +265,12 @@
 			MX93_PAD_GPIO_IO03__LPSPI6_SCK		0x386
 		>;
 	};
-
+	pinctrl_lpi2c1: lpi2c1grp {
+		fsl,pins = <
+			MX93_PAD_ENET1_RD2__ENET_QOS_RGMII_RD2			0x40000b9e
+			MX93_PAD_ENET1_RD3__ENET_QOS_RGMII_RD3			0x40000b9e
+		>;
+	};
 	pinctrl_lpspi1: lpspi1grp {
 		fsl,pins = <
 			MX93_PAD_SAI1_RXD0__LPSPI1_SOUT			0x51e
@@ -241,6 +321,19 @@
 	pinctrl_rtc: rtcgrp {
 		fsl,pins = <
 			MX93_PAD_ENET2_RD2__GPIO4_IO26		0x31e
+		>;
+	};
+
+	pinctrl_flexcan1: flexcan1grp {
+		fsl,pins = <
+			MX93_PAD_PDM_BIT_STREAM0__CAN1_RX	0x139e
+			MX93_PAD_PDM_CLK__CAN1_TX		0x139e
+		>;
+	};
+
+	pinctrl_flexcan1_en: flexcan1engrp {
+		fsl,pins = <
+			MX93_PAD_ENET2_TD3__GPIO4_IO16		0x31e
 		>;
 	};
 
