@@ -17,11 +17,10 @@
 		compatible = "phytec,imx93-phyboard-segin",
 		     "phytec,imx93-phycore-som", "fsl,imx93";
 
-	aliases {
-		ethernet1 = &eqos;
-		rtc0 = &i2c_rtc;
-		rtc1 = &bbnsm_rtc;
-	};
+ 	aliases {
+ 		rtc0 = &i2c_rtc; // override the default alias (&bbnsm_rtc)
+ 		rtc1 = &bbnsm_rtc;
+ 	};
 
 	chosen {
 		stdout-path = &lpuart1;
@@ -83,17 +82,6 @@
 /* Ethernet */
 &ethphy1 {
 	ti,leds-polarity = <0>;
-};
-
-&eqos {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_eqos>;
-	phy-mode = "rmii";
-	phy-handle = <&ethphy2>;
-	assigned-clock-parents = <&clk IMX93_CLK_SYS_PLL_PFD1_DIV2>,
-				 <&clk IMX93_CLK_SYS_PLL_PFD1_DIV2>;
-	assigned-clock-rates = <100000000>, <50000000>;
-	status = "okay";
 };
 
 &mdio {
@@ -206,14 +194,20 @@
 };
 
 
+/* DT arrays cannot be extended. If a board extends the LPSPI1 bus, it needs to 
+ * re-define 'cs-gpios' and 'num-chipselects'. We define these as macros to avoid
+ * copy-paste. */
+#define IMX93_MLPA_LPSPI1_NUM_CHIPSELECTS	1
+#define IMX93_MLPA_LPSPI1_CS_GPIOS		&gpio1 11 0
+
 &lpspi1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpspi1>;
-	cs-gpios =	<&gpio1 11 0>; 	 
+	cs-gpios = <IMX93_MLPA_LPSPI1_CS_GPIOS>; 	 
 	status = "okay";
-	num-chipselects = <1>;
+	num-chipselects = <IMX93_MLPA_LPSPI1_NUM_CHIPSELECTS>;
 	/* TPM */
 	tpm0: tpm@0 {
 		compatible = "tcg,tpm_tis-spi","infineon,slb9670";
@@ -282,19 +276,6 @@
 	pinctrl_tpm: tpmgrp {
 		fsl,pins = <
 			MX93_PAD_CCM_CLKO4__GPIO4_IO29		0x57e
-		>;
-	};
-
-	pinctrl_eqos: eqosgrp {
-		fsl,pins = <
-			MX93_PAD_ENET1_TD2__CCM_ENET_QOS_CLOCK_GENERATE_REF_CLK	0x4000050e
-			MX93_PAD_ENET1_RD0__ENET_QOS_RGMII_RD0		0x57e
-			MX93_PAD_ENET1_RD1__ENET_QOS_RGMII_RD1		0x57e
-			MX93_PAD_ENET1_TD0__ENET_QOS_RGMII_TD0		0x50e
-			MX93_PAD_ENET1_TD1__ENET_QOS_RGMII_TD1		0x50e
-			MX93_PAD_ENET1_RX_CTL__ENET_QOS_RGMII_RX_CTL	0x57e
-			MX93_PAD_ENET1_TX_CTL__ENET_QOS_RGMII_TX_CTL	0x50e
-			MX93_PAD_ENET1_RXC__ENET_QOS_RX_ER		0x57e
 		>;
 	};
 

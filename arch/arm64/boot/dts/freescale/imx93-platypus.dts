@@ -14,10 +14,10 @@
 &lpspi1 {
 	pinctrl-1 = <&pinctrl_esp>;
 	/delete-property/ num-chipselects;
-	num-chipselects = <2>;
+	num-chipselects = <(IMX93_MLPA_LPSPI1_NUM_CHIPSELECTS + 1)>;
 	/delete-property/ cs-gpios;
 	cs-gpios = <
-		&gpio1 11 0 
+		IMX93_MLPA_LPSPI1_CS_GPIOS 
 		&gpio1 9 GPIO_ACTIVE_LOW
 	>; 	 
 	esp32_c6: esp32_c6@1 {
