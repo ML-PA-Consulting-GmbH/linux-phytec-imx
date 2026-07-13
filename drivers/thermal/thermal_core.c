@@ -42,8 +42,6 @@ static struct thermal_governor *def_governor;
 
 static bool thermal_pm_suspended;
 
-static struct workqueue_struct *thermal_wq __ro_after_init;
-
 /*
  * Governor section: set of functions to handle thermal governors
  *
@@ -330,7 +328,7 @@ static void thermal_zone_device_set_polling(struct thermal_zone_device *tz,
 	if (delay > HZ)
 		delay = round_jiffies_relative(delay);
 
-	mod_delayed_work(thermal_wq, &tz->poll_queue, delay);
+	mod_delayed_work(system_freezable_power_efficient_wq, &tz->poll_queue, delay);
 }
 
 static void thermal_zone_recheck(struct thermal_zone_device *tz, int error)
@@ -1689,12 +1687,6 @@ static void thermal_zone_device_resume(struct work_struct *work)
 
 	mutex_lock(&tz->lock);
 
-	/* If the thermal zone is going away, there's nothing to do. */
-	if (tz->state & TZ_STATE_FLAG_EXIT) {
-		mutex_unlock(&tz->lock);
-		return;
-	}
-
 	tz->state &= ~(TZ_STATE_FLAG_SUSPENDED | TZ_STATE_FLAG_RESUMING);
 
 	thermal_debug_tz_resume(tz);
@@ -1726,15 +1718,14 @@ static void thermal_zone_pm_prepare(struct thermal_zone_device *tz)
 
 	tz->state |= TZ_STATE_FLAG_SUSPENDED;
 
-	/* Prevent new work from getting to the workqueue subsequently. */
-	cancel_delayed_work(&tz->poll_queue);
-
 	mutex_unlock(&tz->lock);
 }
 
 static void thermal_zone_pm_complete(struct thermal_zone_device *tz)
 {
 	mutex_lock(&tz->lock);
+
+	cancel_delayed_work(&tz->poll_queue);
 
 	reinit_completion(&tz->resume);
 	tz->state |= TZ_STATE_FLAG_RESUMING;
@@ -1745,7 +1736,7 @@ static void thermal_zone_pm_complete(struct thermal_zone_device *tz)
 	 */
 	INIT_DELAYED_WORK(&tz->poll_queue, thermal_zone_device_resume);
 	/* Queue up the work without a delay. */
-	mod_delayed_work(thermal_wq, &tz->poll_queue, 0);
+	mod_delayed_work(system_freezable_power_efficient_wq, &tz->poll_queue, 0);
 
 	mutex_unlock(&tz->lock);
 }
@@ -1767,11 +1758,6 @@ static int thermal_pm_notify(struct notifier_block *nb,
 			thermal_zone_pm_prepare(tz);
 
 		mutex_unlock(&thermal_list_lock);
-		/*
-		 * Allow any leftover thermal work items already on the
-		 * worqueue to complete so they don't get in the way later.
-		 */
-		flush_workqueue(thermal_wq);
 		break;
 	case PM_POST_HIBERNATION:
 	case PM_POST_RESTORE:
@@ -1811,16 +1797,9 @@ static int __init thermal_init(void)
 	if (result)
 		goto error;
 
-	thermal_wq = alloc_workqueue("thermal_events",
-				      WQ_FREEZABLE | WQ_POWER_EFFICIENT, 0);
-	if (!thermal_wq) {
-		result = -ENOMEM;
-		goto unregister_netlink;
-	}
-
 	result = thermal_register_governors();
 	if (result)
-		goto destroy_workqueue;
+		goto unregister_netlink;
 
 	thermal_class = kzalloc(sizeof(*thermal_class), GFP_KERNEL);
 	if (!thermal_class) {
@@ -1847,8 +1826,6 @@ static int __init thermal_init(void)
 
 unregister_governors:
 	thermal_unregister_governors();
-destroy_workqueue:
-	destroy_workqueue(thermal_wq);
 unregister_netlink:
 	thermal_netlink_exit();
 error:
