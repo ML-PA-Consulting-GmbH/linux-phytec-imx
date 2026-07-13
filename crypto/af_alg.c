@@ -1073,14 +1073,7 @@ int af_alg_sendmsg(struct socket *sock, struct msghdr *msg, size_t size,
 				struct page *pg;
 				unsigned int i = sgl->cur;
 
-<<<<<<< ours
 				plen = min_t(size_t, len, PAGE_SIZE);
-=======
-unlock:
-	af_alg_data_wakeup(sk);
-	ctx->write = false;
-	release_sock(sk);
->>>>>>> theirs
 
 				pg = alloc_page(GFP_KERNEL);
 				if (!pg) {
