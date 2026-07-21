@@ -9,7 +9,6 @@
 #include <dt-bindings/phy/phy-imx8-pcie.h>
 #include <dt-bindings/leds/leds-pca9532.h>
 #include <dt-bindings/thermal/thermal.h>
-#include "imx8mp-nxp-display.dtsi"
 #include "imx8mp-phycore-som.dtsi"
 
 / {
@@ -59,6 +58,24 @@
 		regulator-max-microvolt = <5000000>;
 		regulator-min-microvolt = <5000000>;
 		regulator-name = "VCC_5V_SW";
+	};
+
+	/* Minimal local LDB node to keep MLPA LVDS endpoint wiring buildable. */
+	ldb: ldb-display-controller {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "fsl,imx8mp-ldb";
+		status = "disabled";
+
+		lvds-channel@0 {
+			reg = <0>;
+			status = "disabled";
+		};
+
+		lvds-channel@1 {
+			reg = <1>;
+			status = "disabled";
+		};
 	};
 
 	reg_can1_stby: regulator-can1-stby {
