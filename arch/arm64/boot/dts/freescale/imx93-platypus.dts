@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/dts-v1/;
+
+#include "imx93-mlpa.dtsi"
+
+&lpuart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart2>;
+	status = "okay";
+	/delete-property/ dmas;
+	/delete-property/ dma-names;
+};
+
+&lpspi1 {
+	pinctrl-1 = <&pinctrl_esp>;
+	/delete-property/ num-chipselects;
+	num-chipselects = <2>;
+	/delete-property/ cs-gpios;
+	cs-gpios = <
+		&gpio1 11 0 
+		&gpio1 9 GPIO_ACTIVE_LOW
+	>; 	 
+	esp32_c6: esp32_c6@1 {
+                status = "okay";
+		compatible = "esp,hosted";
+		reg = <1>;
+		spi-max-frequency = <5000000>;
+		hs-gpio =    <&gpio3 24 GPIO_ACTIVE_HIGH>;
+		dr-gpio =    <&gpio3 25 GPIO_ACTIVE_HIGH>;
+		pwr-gpio =   <&gpio2  8 GPIO_ACTIVE_HIGH>;
+		rst-gpio =   <&gpio2  9 GPIO_ACTIVE_LOW>;
+		flash-gpio = <&gpio2 10 GPIO_ACTIVE_HIGH>;
+		label = "hmi";
+	};
+};
+
+&iomuxc {
+	pinctrl_esp: espgrp {
+		fsl,pins = <
+			MX93_PAD_PDM_BIT_STREAM0__GPIO1_IO09            0x51e /* ESP32-C6 CS */
+		>;
+	};
+
+	pinctrl_uart2: uart2grp {
+		fsl,pins = <
+			MX93_PAD_UART2_RXD__LPUART2_RX			0x31e
+			MX93_PAD_UART2_TXD__LPUART2_TX			0x30e
+		>;
+	};
+};
