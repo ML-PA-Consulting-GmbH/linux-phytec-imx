@@ -9,6 +9,7 @@
 #include <dt-bindings/phy/phy-imx8-pcie.h>
 #include <dt-bindings/leds/leds-pca9532.h>
 #include <dt-bindings/thermal/thermal.h>
+#include "imx8mp-nxp-display.dtsi"
 #include "imx8mp-phycore-som.dtsi"
 
 / {
