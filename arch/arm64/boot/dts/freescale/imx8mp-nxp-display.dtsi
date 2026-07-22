@@ -3,6 +3,16 @@
  * Copyright 2025 NXP
  */
 
+/delete-node/ &hdmi_blk_ctrl;
+/delete-node/ &hdmi_pvi;
+/delete-node/ &hdmi_tx;
+/delete-node/ &hdmi_tx_phy;
+/delete-node/ &lcdif1;
+/delete-node/ &lcdif2;
+/delete-node/ &lcdif3;
+/delete-node/ &lvds_bridge;
+/delete-node/ &mipi_dsi;
+
 / {
 	display-subsystem {
 		compatible = "fsl,imx-display-subsystem";
