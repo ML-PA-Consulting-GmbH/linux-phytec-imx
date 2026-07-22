@@ -278,6 +278,7 @@ nomem_token:
 nomem:
 	return -ENOMEM;
 reject_token:
+	kfree(token->rxgk);
 	kfree(token);
 reject:
 	return -EKEYREJECTED;
@@ -498,6 +499,10 @@ static int rxrpc_preparse(struct key_preparsed_payload *prep)
 
 	ret = -EPROTONOSUPPORT;
 	if (v1->security_index != RXRPC_SECURITY_RXKAD)
+		goto error;
+
+	ret = -EKEYREJECTED;
+	if (v1->ticket_length > AFSTOKEN_RK_TIX_MAX)
 		goto error;
 
 	plen = sizeof(*token->kad) + v1->ticket_length;
