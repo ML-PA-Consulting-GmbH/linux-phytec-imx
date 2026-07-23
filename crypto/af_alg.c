@@ -660,6 +660,10 @@ unsigned int af_alg_count_tsgl(struct sock *sk, size_t bytes)
 		const struct scatterlist *sg = sgl->sg;
 
 		for (i = 0; i < sgl->cur; i++) {
+			/* Ignore stale or empty SG entries when counting pull budget. */
+			if (!sg_page(sg + i) || !sg[i].length)
+				continue;
+
 			sgl_count++;
 			if (sg[i].length >= bytes)
 				return sgl_count;

@@ -172,6 +172,18 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 	tsgl_src = areq->tsgl;
 
 	/*
+	 * Guard against malformed/empty SG heads. Using an invalid SG head as
+	 * memcpy_sglist source can crash in scatterwalk paths.
+	 */
+	while (processed && tsgl_src &&
+	       (!sg_page(tsgl_src) || !tsgl_src->length))
+		tsgl_src = sg_next(tsgl_src);
+	if (processed && !tsgl_src) {
+		err = -EFAULT;
+		goto free;
+	}
+
+	/*
 	 * Copy of AAD from source to destination
 	 *
 	 * The AAD is copied to the destination buffer without change. Even
