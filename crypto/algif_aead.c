@@ -117,7 +117,7 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 	size_t outlen = 0;		/* [out] RX bufs produced by kernel */
 	size_t usedpages = 0;		/* [in]  RX bufs to be used from user */
 	size_t processed = 0;		/* [in]  TX bufs to be consumed */
-
+	unsigned int tsgl_start_idx = 0;
 	if (!ctx->init || ctx->more) {
 		err = af_alg_wait_for_data(sk, flags, 0);
 		if (err)
@@ -196,8 +196,6 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 	 */
 	processed = used + ctx->aead_assoclen;
 	{
-		unsigned int tsgl_start_idx = 0;
-
 		areq->tsgl_entries = af_alg_count_tsgl(sk, processed);
 		if (!areq->tsgl_entries)
 			areq->tsgl_entries = 1;
