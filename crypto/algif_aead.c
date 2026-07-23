@@ -118,6 +118,7 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 	size_t usedpages = 0;		/* [in]  RX bufs to be used from user */
 	size_t processed = 0;		/* [in]  TX bufs to be consumed */
 	unsigned int tsgl_start_idx = 0;
+	const char *dbg_fail = NULL;
 	if (!ctx->init || ctx->more) {
 		err = af_alg_wait_for_data(sk, flags, 0);
 		if (err)
@@ -141,6 +142,9 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 	 */
 	if (!aead_sufficient_data(sk))
 		return -EINVAL;
+
+	pr_debug("algif_aead recv: enc=%u as=%u assoc=%u ctx_used=%zu init=%u more=%u\n",
+		 ctx->enc, as, ctx->aead_assoclen, ctx->used, ctx->init, ctx->more);
 
 	/*
 	 * Calculate the minimum output buffer size holding the result of the
@@ -172,6 +176,9 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 	if (err)
 		goto free;
 
+	pr_debug("algif_aead recv rsgl: outlen=%zu used=%zu usedpages=%zu as=%u assoc=%u\n",
+		 outlen, used, usedpages, as, ctx->aead_assoclen);
+
 	/*
 	 * Ensure output buffer is sufficiently large. If the caller provides
 	 * less buffer space, only use the relative required input size. This
@@ -184,6 +191,7 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 
 		if (used < less) {
 			err = -EINVAL;
+			dbg_fail = "insufficient-used-for-short-rx";
 			goto free;
 		}
 		used -= less;
@@ -204,6 +212,7 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 					  GFP_KERNEL);
 		if (!areq->tsgl) {
 			err = -ENOMEM;
+			dbg_fail = "tsgl-alloc";
 			goto free;
 		}
 		sg_init_table(areq->tsgl, areq->tsgl_entries);
@@ -219,6 +228,7 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 		 */
 		if (ctx->aead_assoclen && !tsgl_src) {
 			err = -EFAULT;
+			dbg_fail = "aad-prefix-invalid";
 			goto free;
 		}
 
@@ -227,6 +237,7 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 						     areq->tsgl_entries - tsgl_start_idx,
 						     processed, NULL)) {
 			err = -EFAULT;
+			dbg_fail = "processed-span-invalid";
 			goto free;
 		}
 	}
@@ -250,12 +261,14 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 		/* Do not copy AAD into RX SGL if user provided too little RX space. */
 		if (usedpages < ctx->aead_assoclen) {
 			err = -EINVAL;
+			dbg_fail = "rx-too-small-for-aad";
 			goto free;
 		}
 
 		aad_buf = sock_kmalloc(sk, ctx->aead_assoclen, GFP_KERNEL);
 		if (!aad_buf) {
 			err = -ENOMEM;
+			dbg_fail = "aad-buf-alloc";
 			goto free;
 		}
 
@@ -265,6 +278,7 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 				   aad_buf, ctx->aead_assoclen);
 		if (copied != ctx->aead_assoclen) {
 			err = -EFAULT;
+			dbg_fail = "aad-copy-to-buffer-short";
 			sock_kzfree_s(sk, aad_buf, ctx->aead_assoclen);
 			goto free;
 		}
@@ -291,6 +305,8 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 					  af_alg_async_cb, areq);
 		err = ctx->enc ? crypto_aead_encrypt(&areq->cra_u.aead_req) :
 				 crypto_aead_decrypt(&areq->cra_u.aead_req);
+		if (err)
+			dbg_fail = "crypto-aio";
 
 		/* AIO operation in progress */
 		if (err == -EINPROGRESS)
@@ -307,10 +323,20 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 				crypto_aead_encrypt(&areq->cra_u.aead_req) :
 				crypto_aead_decrypt(&areq->cra_u.aead_req),
 				&ctx->wait);
+		if (err)
+			dbg_fail = "crypto-sync";
 	}
 
 
 free:
+	if (err)
+		pr_debug("algif_aead recv fail: err=%d reason=%s as=%u assoc=%u used=%zu outlen=%zu usedpages=%zu processed=%zu\n",
+			 err, dbg_fail ? dbg_fail : "unknown", as, ctx->aead_assoclen,
+			 used, outlen, usedpages, processed);
+	else
+		pr_debug("algif_aead recv ok: as=%u assoc=%u used=%zu outlen=%zu usedpages=%zu processed=%zu\n",
+			 as, ctx->aead_assoclen, used, outlen, usedpages, processed);
+
 	af_alg_free_resources(areq);
 
 	return err ? err : outlen;
