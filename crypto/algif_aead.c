@@ -143,8 +143,9 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 	if (!aead_sufficient_data(sk))
 		return -EINVAL;
 
-	pr_debug("algif_aead recv: enc=%u as=%u assoc=%u ctx_used=%zu init=%u more=%u\n",
-		 ctx->enc, as, ctx->aead_assoclen, ctx->used, ctx->init, ctx->more);
+	pr_info_ratelimited("algif_aead recv: enc=%u as=%u assoc=%u ctx_used=%zu init=%u more=%u\n",
+			    ctx->enc, as, ctx->aead_assoclen, ctx->used,
+			    ctx->init, ctx->more);
 
 	/*
 	 * Calculate the minimum output buffer size holding the result of the
@@ -176,8 +177,8 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 	if (err)
 		goto free;
 
-	pr_debug("algif_aead recv rsgl: outlen=%zu used=%zu usedpages=%zu as=%u assoc=%u\n",
-		 outlen, used, usedpages, as, ctx->aead_assoclen);
+	pr_info_ratelimited("algif_aead recv rsgl: outlen=%zu used=%zu usedpages=%zu as=%u assoc=%u\n",
+			    outlen, used, usedpages, as, ctx->aead_assoclen);
 
 	/*
 	 * Ensure output buffer is sufficiently large. If the caller provides
@@ -330,12 +331,14 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 
 free:
 	if (err)
-		pr_debug("algif_aead recv fail: err=%d reason=%s as=%u assoc=%u used=%zu outlen=%zu usedpages=%zu processed=%zu\n",
-			 err, dbg_fail ? dbg_fail : "unknown", as, ctx->aead_assoclen,
-			 used, outlen, usedpages, processed);
+		pr_info_ratelimited("algif_aead recv fail: err=%d reason=%s as=%u assoc=%u used=%zu outlen=%zu usedpages=%zu processed=%zu\n",
+				    err, dbg_fail ? dbg_fail : "unknown", as,
+				    ctx->aead_assoclen, used, outlen,
+				    usedpages, processed);
 	else
-		pr_debug("algif_aead recv ok: as=%u assoc=%u used=%zu outlen=%zu usedpages=%zu processed=%zu\n",
-			 as, ctx->aead_assoclen, used, outlen, usedpages, processed);
+		pr_info_ratelimited("algif_aead recv ok: as=%u assoc=%u used=%zu outlen=%zu usedpages=%zu processed=%zu\n",
+				    as, ctx->aead_assoclen, used, outlen,
+				    usedpages, processed);
 
 	af_alg_free_resources(areq);
 
