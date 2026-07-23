@@ -247,6 +247,12 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 		void *aad_buf;
 		size_t copied;
 
+		/* Do not copy AAD into RX SGL if user provided too little RX space. */
+		if (usedpages < ctx->aead_assoclen) {
+			err = -EINVAL;
+			goto free;
+		}
+
 		aad_buf = sock_kmalloc(sk, ctx->aead_assoclen, GFP_KERNEL);
 		if (!aad_buf) {
 			err = -ENOMEM;
