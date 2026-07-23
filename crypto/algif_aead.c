@@ -32,6 +32,7 @@
 #include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/net.h>
+#include <linux/scatterlist.h>
 #include <net/sock.h>
 
 static inline bool aead_sufficient_data(struct sock *sk)
@@ -244,7 +245,28 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 	/* Use the RX SGL as source (and destination) for crypto op. */
 	rsgl_src = areq->first_rsgl.sgl.sgt.sgl;
 
-	memcpy_sglist(rsgl_src, tsgl_src, ctx->aead_assoclen);
+	if (ctx->aead_assoclen) {
+		void *aad_buf;
+		size_t copied;
+
+		aad_buf = sock_kmalloc(sk, ctx->aead_assoclen, GFP_KERNEL);
+		if (!aad_buf) {
+			err = -ENOMEM;
+			goto free;
+		}
+
+		/* Linearize AAD first so the copy path no longer depends on SG walk. */
+		copied = sg_copy_to_buffer(tsgl_src,
+				   areq->tsgl_entries - tsgl_start_idx,
+				   aad_buf, ctx->aead_assoclen);
+		if (copied != ctx->aead_assoclen) {
+			err = -EFAULT;
+			sock_kzfree_s(sk, aad_buf, ctx->aead_assoclen);
+			goto free;
+		}
+		memcpy_to_sglist(rsgl_src, 0, aad_buf, ctx->aead_assoclen);
+		sock_kzfree_s(sk, aad_buf, ctx->aead_assoclen);
+	}
 
 	/* Initialize the crypto operation */
 	aead_request_set_crypt(&areq->cra_u.aead_req, tsgl_src,
