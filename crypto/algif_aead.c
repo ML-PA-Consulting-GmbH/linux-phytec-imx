@@ -62,6 +62,43 @@ static int aead_sendmsg(struct socket *sock, struct msghdr *msg, size_t size)
 	return af_alg_sendmsg(sock, msg, size, ivsize);
 }
 
+static struct scatterlist *af_alg_find_valid_sg_prefix(struct scatterlist *sg,
+						      unsigned int nents,
+						      size_t bytes,
+						      unsigned int *start_idx)
+{
+	unsigned int i = 0;
+	unsigned int first;
+
+	if (!bytes) {
+		if (start_idx)
+			*start_idx = 0;
+		return sg;
+	}
+
+	while (i < nents && (!sg_page(sg + i) || !sg[i].length))
+		i++;
+
+	if (i == nents)
+		return NULL;
+
+	first = i;
+	if (start_idx)
+		*start_idx = first;
+
+	for (; i < nents && bytes; i++) {
+		if (!sg_page(sg + i) || !sg[i].length)
+			return NULL;
+
+		if (sg[i].length >= bytes)
+			return sg + first;
+
+		bytes -= sg[i].length;
+	}
+
+	return NULL;
+}
+
 static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 			 size_t ignored, int flags)
 {
@@ -157,30 +194,42 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
 	 * SG entries from the global TX SGL.
 	 */
 	processed = used + ctx->aead_assoclen;
-	areq->tsgl_entries = af_alg_count_tsgl(sk, processed);
-	if (!areq->tsgl_entries)
-		areq->tsgl_entries = 1;
-	areq->tsgl = sock_kmalloc(sk, array_size(sizeof(*areq->tsgl),
-					         areq->tsgl_entries),
-				  GFP_KERNEL);
-	if (!areq->tsgl) {
-		err = -ENOMEM;
-		goto free;
-	}
-	sg_init_table(areq->tsgl, areq->tsgl_entries);
-	af_alg_pull_tsgl(sk, processed, areq->tsgl);
-	tsgl_src = areq->tsgl;
+	{
+		unsigned int tsgl_start_idx = 0;
 
-	/*
-	 * Guard against malformed/empty SG heads. Using an invalid SG head as
-	 * memcpy_sglist source can crash in scatterwalk paths.
-	 */
-	while (processed && tsgl_src &&
-	       (!sg_page(tsgl_src) || !tsgl_src->length))
-		tsgl_src = sg_next(tsgl_src);
-	if (processed && !tsgl_src) {
-		err = -EFAULT;
-		goto free;
+		areq->tsgl_entries = af_alg_count_tsgl(sk, processed);
+		if (!areq->tsgl_entries)
+			areq->tsgl_entries = 1;
+		areq->tsgl = sock_kmalloc(sk, array_size(sizeof(*areq->tsgl),
+							 areq->tsgl_entries),
+					  GFP_KERNEL);
+		if (!areq->tsgl) {
+			err = -ENOMEM;
+			goto free;
+		}
+		sg_init_table(areq->tsgl, areq->tsgl_entries);
+		af_alg_pull_tsgl(sk, processed, areq->tsgl);
+		tsgl_src = af_alg_find_valid_sg_prefix(areq->tsgl,
+						      areq->tsgl_entries,
+						      ctx->aead_assoclen,
+						      &tsgl_start_idx);
+
+		/*
+		 * Guard against malformed/empty SG chains. Using an invalid SG source
+		 * in memcpy_sglist or as crypto input can crash in scatterwalk paths.
+		 */
+		if (ctx->aead_assoclen && !tsgl_src) {
+			err = -EFAULT;
+			goto free;
+		}
+
+		if (processed &&
+		    !af_alg_find_valid_sg_prefix(areq->tsgl + tsgl_start_idx,
+						     areq->tsgl_entries - tsgl_start_idx,
+						     processed, NULL)) {
+			err = -EFAULT;
+			goto free;
+		}
 	}
 
 	/*
