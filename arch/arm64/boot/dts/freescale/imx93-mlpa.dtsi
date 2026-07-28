@@ -21,6 +21,8 @@
 		ethernet1 = &eqos;
 		rtc0 = &i2c_rtc;
 		rtc1 = &bbnsm_rtc;
+		serial0 = &lpuart1;
+		spi0 = &lpspi1;
 	};
 
 	chosen {
