@@ -260,14 +260,14 @@
 	eeprom@50 {
 	compatible = "microchip,24cs08", "atmel,24cs08";
 	reg = <0x50>;
-	vcc-supply = <&reg_vcc_1v8_audio>;
+	vcc-supply = <&reg_vcc_1v8>;
 	};
 
 	/* EEPROM ID page */
 	eepromid@51 {
 	compatible = "microchip,24cs08", "atmel,24cs08";
 	reg = <0x51>;
-	vcc-supply = <&reg_vcc_1v8_audio>;
+	vcc-supply = <&reg_vcc_1v8>;
 	};
 };
 
