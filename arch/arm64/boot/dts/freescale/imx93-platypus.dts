@@ -14,10 +14,10 @@
 &lpspi1 {
 	pinctrl-1 = <&pinctrl_esp>;
 	/delete-property/ num-chipselects;
-	num-chipselects = <(IMX93_MLPA_LPSPI1_NUM_CHIPSELECTS + 1)>;
+	num-chipselects = <2>;
 	/delete-property/ cs-gpios;
 	cs-gpios = <
-		IMX93_MLPA_LPSPI1_CS_GPIOS 
+		&gpio1 11 0 
 		&gpio1 9 GPIO_ACTIVE_LOW
 	>; 	 
 	esp32_c6: esp32_c6@1 {
@@ -26,18 +26,8 @@
 		reg = <1>;
 		spi-max-frequency = <5000000>;
 		hs-gpio =    <&gpio3 24 GPIO_ACTIVE_HIGH>;
-<<<<<<< HEAD
-<<<<<<< HEAD
 		dr-gpio =    <&gpio3 25 GPIO_ACTIVE_HIGH>;
 		pwr-gpio =   <&gpio2  8 GPIO_ACTIVE_HIGH>;
-=======
-		dr-gpio =    <&gpio3 25 GPIO_ACTIVE_HIGH>; 
-		pwr-gpio =   <&gpio2  8 GPIO_ACTIVE_HIGH>; 
->>>>>>> 617e8561b358 (feat(drivers/bluetooth/esp_hci): add FW download mode and simplified state machine)
-=======
-		dr-gpio =    <&gpio3 25 GPIO_ACTIVE_HIGH>;
-		pwr-gpio =   <&gpio2  8 GPIO_ACTIVE_HIGH>;
->>>>>>> cf4d3bec9904 (fix(drivers/bluetooth/esp_hci): fixes for previous PR)
 		rst-gpio =   <&gpio2  9 GPIO_ACTIVE_LOW>;
 		flash-gpio = <&gpio2 10 GPIO_ACTIVE_HIGH>;
 		label = "hmi";
