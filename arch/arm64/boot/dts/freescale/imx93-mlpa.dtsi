@@ -90,32 +90,51 @@
 	};
 };
 
-/* Ethernet */
-&ethphy1 {
-	ti,leds-polarity = <0>;
-};
-
 /* ADC */
 &adc1 {
 	status = "okay";
 };
 
+/* Power-key */
+&bbnsm_pwrkey {
+	linux,keycode = <KEY_POWER>;
+	wakeup-source;
+};
+
 /* Ethernet */
+&ethphy1 {
+	ti,leds-polarity = <0>;
+};
+
 &eqos {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_eqos>;
-	phy-mode = "rgmii-id";
+	phy-mode = "rmii";
 	phy-handle = <&ethphy2>;
+	assigned-clocks = <&clk IMX93_CLK_ENET_TIMER2>,
+			  <&clk IMX93_CLK_ENET>;
+	assigned-clock-parents = <&clk IMX93_CLK_SYS_PLL_PFD1_DIV2>,
+				 <&clk IMX93_CLK_SYS_PLL_PFD1_DIV2>;
+	assigned-clock-rates = <100000000>, <50000000>;
 	status = "okay";
 };
 
+/* ENET2 MDIO */
 &mdio {
 	ethphy2: ethernet-phy@2 {
-		compatible = "ethernet-phy-id0022.1561";
 		reg = <2>;
+		micrel,led-mode = <1>;
+		compatible = "ethernet-phy-id0022.1561";
+
+		/*
+		 * HACK:
+		 * IMX93_CLK_ENET is the ref clock and should be running at 50Mhz.
+		 * Using it here to tell the PHY we are running at 50MHz is not working.
+		 * Let us simply use another clock here.
+		 */
+		/* clocks = <&clk IMX93_CLK_ENET>; */
 		clocks = <&clk IMX93_CLK_ENET_REF_PHY>;
 		clock-names = "rmii-ref";
-		micrel,led-mode = <1>;
 	};
 };
 
@@ -308,14 +327,14 @@
 
 	pinctrl_eqos: eqosgrp {
 		fsl,pins = <
-			MX93_PAD_ENET1_TD2__CCM_ENET_QOS_CLOCK_GENERATE_REF_CLK	0x4000050e
-			MX93_PAD_ENET1_RD0__ENET_QOS_RGMII_RD0		0x57e
-			MX93_PAD_ENET1_RD1__ENET_QOS_RGMII_RD1		0x57e
-			MX93_PAD_ENET1_TD0__ENET_QOS_RGMII_TD0		0x50e
-			MX93_PAD_ENET1_TD1__ENET_QOS_RGMII_TD1		0x50e
-			MX93_PAD_ENET1_RX_CTL__ENET_QOS_RGMII_RX_CTL	0x57e
-			MX93_PAD_ENET1_TX_CTL__ENET_QOS_RGMII_TX_CTL	0x50e
-			MX93_PAD_ENET1_RXC__ENET_QOS_RX_ER		0x57e
+			MX93_PAD_ENET1_TD2__CCM_ENET_QOS_CLOCK_GENERATE_REF_CLK 0x4000050e
+			MX93_PAD_ENET1_RD0__ENET_QOS_RGMII_RD0			0x57e
+			MX93_PAD_ENET1_RD1__ENET_QOS_RGMII_RD1			0x57e
+			MX93_PAD_ENET1_TD0__ENET_QOS_RGMII_TD0			0x50e
+			MX93_PAD_ENET1_TD1__ENET_QOS_RGMII_TD1			0x50e
+			MX93_PAD_ENET1_RX_CTL__ENET_QOS_RGMII_RX_CTL		0x57e
+			MX93_PAD_ENET1_TX_CTL__ENET_QOS_RGMII_TX_CTL		0x50e
+			MX93_PAD_ENET1_RXC__ENET_QOS_RX_ER			0x57e
 		>;
 	};
 
