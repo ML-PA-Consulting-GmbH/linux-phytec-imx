@@ -15,8 +15,6 @@
 #define ESP_HCI_SPI_FRAME_SIZE 300
 #define ESP_HCI_SPI_ALIGN sizeof(unsigned)
 #define ESP_HCI_SPI_XFER_LIM 16
-#define ESP_HCI_SPI_TX_QLEN_MAX 32
-#define ESP_HCI_SPI_TX_QLEN_RESUME (ESP_HCI_SPI_TX_QLEN_MAX - 8)
 
 struct esp_hci_spi_dev {
 	struct esp_hci_dev esp_hci_dev;
@@ -24,30 +22,10 @@ struct esp_hci_spi_dev {
 	struct gpio_desc *dr_gpio;
 	int hs_irq;
 	int dr_irq;
-	struct sk_buff_head tx_queue;
-	bool tx_paused;
 	struct delayed_work transfer_dwork;
 	unsigned char *tx_empty_frame;
 };
 
-static struct sk_buff *_pop_tx_packet(struct esp_hci_spi_dev *hci_spi_dev)
-{
-	spin_lock(&hci_spi_dev->tx_queue.lock);
-
-	struct sk_buff *tx_skb = __skb_dequeue(&hci_spi_dev->tx_queue);
-	if (!tx_skb) {
-		spin_unlock(&hci_spi_dev->tx_queue.lock);
-		return NULL;
-	}
-
-	if (hci_spi_dev->tx_queue.qlen <= ESP_HCI_SPI_TX_QLEN_RESUME) {
-		hci_spi_dev->tx_paused = false;
-	}
-
-	spin_unlock(&hci_spi_dev->tx_queue.lock);
-
-	return tx_skb;
-}
 
 /* return < 0 on err, 0 if there's nothing to transfer, > 0  otherwise */
 static int _transfer_once(struct esp_hci_spi_dev *hci_spi_dev,
@@ -63,7 +41,8 @@ static int _transfer_once(struct esp_hci_spi_dev *hci_spi_dev,
 		return 0;
 	}
 
-	struct sk_buff *tx_skb __free(sk_buff) = _pop_tx_packet(hci_spi_dev);
+	struct sk_buff *tx_skb __free(sk_buff) =
+		esp_hci_pop_tx_packet(&hci_spi_dev->esp_hci_dev);
 	if (!rx_pending && !tx_skb) {
 		/* We'll come back once the RX interrupt triggers, or
 		 * the first packet in the empty TX queue is pushed. */
@@ -133,48 +112,6 @@ static void _transfer_work(struct work_struct *work)
 	 *  1. We reached the ESP_HCI_SPI_XFER_LIM -> HS toggled -> queued by HS irq
 	 *  2. HS is not set -> queued by future HS irq
 	 *  3. Error condition -> queued here with a delay */
-}
-
-static int _write_packet(struct esp_hci_dev *esp_hci_dev, struct sk_buff *skb)
-{
-	struct esp_hci_spi_dev *esp_hci_spi_dev =
-		container_of(esp_hci_dev, struct esp_hci_spi_dev, esp_hci_dev);
-
-	if (!skb) {
-		spin_lock(&esp_hci_spi_dev->tx_queue.lock);
-		__skb_queue_purge(&esp_hci_spi_dev->tx_queue);
-		spin_unlock(&esp_hci_spi_dev->tx_queue.lock);
-
-		return 0;
-	}
-
-	spin_lock(&esp_hci_spi_dev->tx_queue.lock);
-
-	if (esp_hci_spi_dev->tx_paused) {
-		spin_unlock(&esp_hci_spi_dev->tx_queue.lock);
-		return -EBUSY;
-	}
-
-	size_t queue_len = esp_hci_spi_dev->tx_queue.qlen;
-	if (queue_len >= ESP_HCI_SPI_TX_QLEN_MAX) {
-		dev_warn_ratelimited(esp_hci_dev->transport_dev,
-				     "TX queue limit reached!\n");
-
-		esp_hci_spi_dev->tx_paused = true;
-		spin_unlock(&esp_hci_spi_dev->tx_queue.lock);
-		return -EBUSY;
-	}
-
-	__skb_queue_tail(&esp_hci_spi_dev->tx_queue, skb);
-
-	spin_unlock(&esp_hci_spi_dev->tx_queue.lock);
-
-	if (queue_len == 0) {
-		queue_work(esp_hci_spi_dev->esp_hci_dev.wq,
-			   &esp_hci_spi_dev->transfer_dwork.work);
-	}
-
-	return 0;
 }
 
 static int _skb_expand(struct esp_hci_dev *esp_hci_dev, struct sk_buff *skb,
@@ -307,6 +244,15 @@ static int _init_gpios(struct esp_hci_spi_dev *hci_spi_dev)
 	return 0;
 }
 
+static void _tx_ready(struct esp_hci_dev *esp_hci_dev)
+{
+	struct esp_hci_spi_dev *esp_spi_dev =
+		container_of(esp_hci_dev, struct esp_hci_spi_dev, esp_hci_dev);
+
+	queue_work(esp_spi_dev->esp_hci_dev.wq,
+		   &esp_spi_dev->transfer_dwork.work);
+}
+
 static int _probe(struct spi_device *spi)
 {
 	struct device *dev = &spi->dev;
@@ -331,7 +277,7 @@ static int _probe(struct spi_device *spi)
 
 	*hci_spi_dev = (struct esp_hci_spi_dev){
 		.esp_hci_dev.type = HCI_SPI,
-		.esp_hci_dev.write_packet = _write_packet,
+		.esp_hci_dev.tx_ready = _tx_ready,
 		.esp_hci_dev.skb_expand = _skb_expand,
 		.esp_hci_dev.transport_dev = &spi->dev,
 		.tx_empty_frame = devm_kzalloc(
@@ -344,7 +290,6 @@ static int _probe(struct spi_device *spi)
 
 	((struct esp_payload_header *)hci_spi_dev->tx_empty_frame)->if_type =
 		0x0F;
-	skb_queue_head_init(&hci_spi_dev->tx_queue);
 	INIT_DELAYED_WORK(&hci_spi_dev->transfer_dwork, _transfer_work);
 	/* _init_gpios() below will enable the interrupts but we're not ready
 	 * yet. */
@@ -390,8 +335,6 @@ static void _remove(struct spi_device *spi)
 	 * the upper layer is done with us, in particular that _write_packet()
 	 * is finished. */
 	esp_hci_remove(&hci_spi_dev->esp_hci_dev);
-
-	skb_queue_purge(&hci_spi_dev->tx_queue);
 
 	dev_dbg(&spi->dev, "removed!\n");
 }
