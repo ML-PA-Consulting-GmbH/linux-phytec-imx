@@ -109,6 +109,16 @@
 	status = "okay";
 };
 
+&mdio {
+	ethphy2: ethernet-phy@2 {
+		compatible = "ethernet-phy-id0022.1561";
+		reg = <2>;
+		clocks = <&clk IMX93_CLK_ENET_REF_PHY>;
+		clock-names = "rmii-ref";
+		micrel,led-mode = <1>;
+	};
+};
+
 /* CAN */
 &flexcan1 {
 	pinctrl-names = "default";
@@ -129,14 +139,14 @@
 	eeprom@50 {
 	compatible = "microchip,24cs08", "atmel,24cs08";
 	reg = <0x50>;
-	vcc-supply = <&reg_vcc_1v8_audio>;
+	vcc-supply = <&reg_vcc_1v8>;
 	};
 
 	/* EEPROM ID page */
 	eepromid@51 {
 	compatible = "microchip,24cs08", "atmel,24cs08";
 	reg = <0x51>;
-	vcc-supply = <&reg_vcc_1v8_audio>;
+	vcc-supply = <&reg_vcc_1v8>;
 	};
 
 	i2c_rtc: rtc@52 {
@@ -153,7 +163,7 @@
 		compatible = "atmel,24c32";
 		reg = <0x54>;
 		pagesize = <32>;
-		vcc-supply = <&reg_vcc_1v8_audio>;
+		vcc-supply = <&reg_vcc_1v8>;
 	};
 
 	/* EEPROM ID page */
@@ -162,7 +172,7 @@
 		reg = <0x5c>;
 		pagesize = <32>;
 		size = <32>;
-		vcc-supply = <&reg_vcc_1v8_audio>;
+		vcc-supply = <&reg_vcc_1v8>;
 	};
 };
 
@@ -180,15 +190,7 @@
 	status = "okay";
 };
 
-/* USB  */
-&usbphynop1 {
-	vbus-supply = <&reg_usb_otg1_vbus>;
-};
-
-&usbphynop2 {
-	vbus-supply = <&reg_usb_otg2_vbus>;
-};
-
+/ * USB */
 &usbotg1 {
 	disable-over-current;
 	dr_mode = "host";
@@ -316,6 +318,7 @@
 			MX93_PAD_ENET1_RXC__ENET_QOS_RX_ER		0x57e
 		>;
 	};
+
 
 	pinctrl_lpi2c2: lpi2c2grp {
 		fsl,pins = <
