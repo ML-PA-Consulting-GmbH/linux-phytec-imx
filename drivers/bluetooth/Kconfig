@@ -312,9 +312,7 @@ config BT_HCIBCM4377
 
 config BT_HCIBPA10X
 	tristate "HCI BPA10x USB driver"
-	depends on BT_HCIUART
 	depends on USB
-	select BT_HCIUART_H4
 	help
 	  Bluetooth HCI BPA10x USB driver.
 	  This driver provides support for the Digianswer BPA 100/105 Bluetooth
@@ -338,7 +336,7 @@ config BT_HCIBFUSB
 
 config BT_HCIDTL1
 	tristate "HCI DTL1 (PC Card) driver"
-	depends on PCMCIA && HAS_IOPORT
+	depends on PCMCIA
 	help
 	  Bluetooth HCI DTL1 (PC Card) driver.
 	  This driver provides support for Bluetooth PCMCIA devices with
@@ -351,7 +349,7 @@ config BT_HCIDTL1
 
 config BT_HCIBT3C
 	tristate "HCI BT3C (PC Card) driver"
-	depends on PCMCIA && HAS_IOPORT
+	depends on PCMCIA
 	select FW_LOADER
 	help
 	  Bluetooth HCI BT3C (PC Card) driver.
@@ -365,7 +363,7 @@ config BT_HCIBT3C
 
 config BT_HCIBLUECARD
 	tristate "HCI BlueCard (PC Card) driver"
-	depends on PCMCIA && HAS_IOPORT
+	depends on PCMCIA
 	help
 	  Bluetooth HCI BlueCard (PC Card) driver.
 	  This driver provides support for Bluetooth PCMCIA devices with
@@ -439,10 +437,8 @@ config BT_MTKSDIO
 
 config BT_MTKUART
 	tristate "MediaTek HCI UART driver"
-	depends on BT_HCIUART
 	depends on SERIAL_DEV_BUS
 	depends on USB || !BT_HCIBTUSB_MTK
-	select BT_HCIUART_H4
 	select BT_MTK
 	help
 	  MediaTek Bluetooth HCI UART driver.
@@ -487,9 +483,7 @@ config BT_VIRTIO
 
 config BT_NXPUART
 	tristate "NXP protocol support"
-	depends on BT_HCIUART
 	depends on SERIAL_DEV_BUS
-	select BT_HCIUART_H4
 	select CRC32
 	select CRC8
 	help
@@ -511,4 +505,18 @@ config BT_INTEL_PCIE
 
 	  Say Y here to compiler support for Intel Bluetooth PCIe device into
 	  the kernel or say M to compile it as module (btintel_pcie)
+
+config BT_ESP_HCI
+	tristate "ESP-Hosted HCI generic driver"
+	help
+	  Use an ESP32 device as HCI device. This is the transport-agnostic
+	  half of the driver. 
+
+config BT_ESP_HCI_SPI
+	tristate "ESP-Hosted HCI SPI transport driver"
+	depends on BT_ESP_HCI
+	depends on SPI
+	help
+	  Use an ESP32 device as HCI device using SPI.
+
 endmenu
