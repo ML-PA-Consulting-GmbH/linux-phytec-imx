@@ -21,6 +21,8 @@
 	aliases {
 		/* Overrides imx93.dtsi, which maps rtc0 to the SoM RTC. */
 		rtc0 = &i2c_rtc;
+		/* Pinned so the SoM RTC can never claim rtc0 if re-enabled. */
+		rtc1 = &bbnsm_rtc;
 	};
 
 	chosen {
