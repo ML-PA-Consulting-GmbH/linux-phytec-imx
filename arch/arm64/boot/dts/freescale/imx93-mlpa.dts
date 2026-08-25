@@ -18,6 +18,11 @@
 		compatible = "phytec,imx93-phyboard-segin",
 		     "phytec,imx93-phycore-som", "fsl,imx93";
 
+	aliases {
+		/* Overrides imx93.dtsi, which maps rtc0 to the SoM RTC. */
+		rtc0 = &i2c_rtc;
+	};
+
 	chosen {
 		stdout-path = &lpuart1;
 	};
@@ -85,6 +90,11 @@
 	};
 };
 
+/* SoM RTC has no battery/capacitor backup; leave it unregistered. */
+&bbnsm_rtc {
+	status = "disabled";
+};
+
 /* Power-key */
 &bbnsm_pwrkey {
 	linux,keycode = <KEY_POWER>;
@@ -135,9 +145,9 @@
 	#size-cells = <0>;
 	status = "okay";
 
-	i2c_rtc: rtc@68 {
-		compatible = "microcrystal,rv4162";
-		reg = <0x68>;
+	i2c_rtc: rtc@52 {
+		compatible = "microcrystal,rv3028";
+		reg = <0x52>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_rtc>;
 		interrupt-parent = <&gpio4>;
