@@ -21,7 +21,7 @@
 	aliases {
 		/* Overrides imx93.dtsi, which maps rtc0 to the SoM RTC. */
 		rtc0 = &i2c_rtc;
-		/* Pinned so the SoM RTC can never claim rtc0 if re-enabled. */
+		/* Pinned so the SoM RTC cannot take rtc0 by probing first. */
 		rtc1 = &bbnsm_rtc;
 	};
 
@@ -90,11 +90,6 @@
 	reg = <0x51>;
 	vcc-supply = <&reg_vcc_1v8_audio>;
 	};
-};
-
-/* SoM RTC has no battery/capacitor backup; leave it unregistered. */
-&bbnsm_rtc {
-	status = "disabled";
 };
 
 /* Power-key */
