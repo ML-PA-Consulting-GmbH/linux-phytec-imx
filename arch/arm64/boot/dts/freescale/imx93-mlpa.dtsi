@@ -8,7 +8,7 @@
  * phyBOARD-Segin carrier board is reused for the i.MX93 design.
  * https://www.phytec.eu/en/produkte/single-board-computer/phyboard-segin-imx6ul/
  */
-// /dts-v0/;
+// /dts-v1/;
 
 #include "imx93-phycore-som.dtsi"
 
@@ -70,33 +70,29 @@
 		io-channels = <&curr_sens 0>;
 	};
 
-	reg_usdhc2_vmmc: regulator-usdhc2 {
+	reg_sound_1v8: regulator-sound-1v8 {
 		compatible = "regulator-fixed";
-		gpio = <&gpio3 7 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_reg_usdhc2_vmmc>;
-		regulator-name = "VCC_SD";
-		regulator-max-microvolt = <3300000>;
-		regulator-min-microvolt = <3300000>;
-	};
-
-	reg_vcc_1v8: regulator-vcc-1v8 {
-		compatible = "regulator-fixed";
-		regulator-name = "VCC1V8";
 		regulator-max-microvolt = <1800000>;
 		regulator-min-microvolt = <1800000>;
+		regulator-name = "VCC1V8_AUDIO";
 	};
-	reserved-memory {
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
 
-		ele_reserved: ele-reserved@a4120000 {
-			compatible = "shared-dma-pool";
-			reg = <0 0xa4120000 0 0x100000>;
-			no-map;
-		};
+	reg_sound_3v3: regulator-sound-3v3 {
+		compatible = "regulator-fixed";
+		regulator-max-microvolt = <3300000>;
+		regulator-min-microvolt = <3300000>;
+		regulator-name = "VCC3V3_ANALOG";
+	};
+
+	reg_usdhc2_vmmc: regulator-usdhc2 {
+		compatible = "regulator-fixed";
+		enable-active-high;
+		gpio = <&gpio3 7 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_reg_usdhc2_vmmc>;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-name = "VCC_SD";
 	};
 };
 
@@ -120,35 +116,25 @@
 	ti,leds-polarity = <0>;
 };
 
+/* Ethernet */
 &eqos {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_eqos>;
 	phy-mode = "rmii";
 	phy-handle = <&ethphy2>;
-	assigned-clocks = <&clk IMX93_CLK_ENET_TIMER2>,
-			  <&clk IMX93_CLK_ENET>;
 	assigned-clock-parents = <&clk IMX93_CLK_SYS_PLL_PFD1_DIV2>,
 				 <&clk IMX93_CLK_SYS_PLL_PFD1_DIV2>;
 	assigned-clock-rates = <100000000>, <50000000>;
 	status = "okay";
 };
 
-/* ENET2 MDIO */
 &mdio {
 	ethphy2: ethernet-phy@2 {
-		reg = <2>;
-		micrel,led-mode = <1>;
 		compatible = "ethernet-phy-id0022.1561";
-
-		/*
-		 * HACK:
-		 * IMX93_CLK_ENET is the ref clock and should be running at 50Mhz.
-		 * Using it here to tell the PHY we are running at 50MHz is not working.
-		 * Let us simply use another clock here.
-		 */
-		/* clocks = <&clk IMX93_CLK_ENET>; */
+		reg = <2>;
 		clocks = <&clk IMX93_CLK_ENET_REF_PHY>;
 		clock-names = "rmii-ref";
+		micrel,led-mode = <1>;
 	};
 };
 
@@ -172,14 +158,14 @@
 	eeprom@50 {
 	compatible = "microchip,24cs08", "atmel,24cs08";
 	reg = <0x50>;
-	vcc-supply = <&reg_vcc_1v8>;
+	vcc-supply = <&reg_sound_1v8>;
 	};
 
 	/* EEPROM ID page */
 	eepromid@51 {
 	compatible = "microchip,24cs08", "atmel,24cs08";
 	reg = <0x51>;
-	vcc-supply = <&reg_vcc_1v8>;
+	vcc-supply = <&reg_sound_1v8>;
 	};
 
 	i2c_rtc: rtc@52 {
@@ -196,7 +182,7 @@
 		compatible = "atmel,24c32";
 		reg = <0x54>;
 		pagesize = <32>;
-		vcc-supply = <&reg_vcc_1v8>;
+		vcc-supply = <&reg_sound_1v8>;
 	};
 
 	/* EEPROM ID page */
@@ -205,7 +191,7 @@
 		reg = <0x5c>;
 		pagesize = <32>;
 		size = <32>;
-		vcc-supply = <&reg_vcc_1v8>;
+		vcc-supply = <&reg_sound_1v8>;
 	};
 };
 
