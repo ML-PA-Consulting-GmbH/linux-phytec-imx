@@ -94,6 +94,18 @@
 		regulator-max-microvolt = <3300000>;
 		regulator-name = "VCC_SD";
 	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		ele_reserved: ele-reserved@a4120000 {
+			compatible = "shared-dma-pool";
+			reg = <0 0xa4120000 0 0x100000>;
+			no-map;
+		};
+	};
 };
 
 &ele_fw2 {
@@ -285,14 +297,14 @@
 	eeprom@50 {
 	compatible = "microchip,24cs08", "atmel,24cs08";
 	reg = <0x50>;
-	vcc-supply = <&reg_vcc_1v8>;
+	vcc-supply = <&reg_sound_1v8>;
 	};
 
 	/* EEPROM ID page */
 	eepromid@51 {
 	compatible = "microchip,24cs08", "atmel,24cs08";
 	reg = <0x51>;
-	vcc-supply = <&reg_vcc_1v8>;
+	vcc-supply = <&reg_sound_1v8>;
 	};
 };
 
