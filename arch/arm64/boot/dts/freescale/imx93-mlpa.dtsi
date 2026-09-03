@@ -156,18 +156,31 @@
 	clock-frequency = <400000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpi2c2>;
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 
-	/* RTC */
+	/* EEPROM */
+	eeprom@50 {
+	compatible = "microchip,24cs08", "atmel,24cs08";
+	reg = <0x50>;
+	vcc-supply = <&reg_vcc_1v8>;
+	};
+
+	/* EEPROM ID page */
+	eepromid@51 {
+	compatible = "microchip,24cs08", "atmel,24cs08";
+	reg = <0x51>;
+	vcc-supply = <&reg_vcc_1v8>;
+	};
+
 	i2c_rtc: rtc@52 {
 		compatible = "microcrystal,rv3028";
 		reg = <0x52>;
-		interrupt-parent = <&gpio4>;
-		interrupts = <26 IRQ_TYPE_LEVEL_LOW>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_rtc>;
-		trickle-resistor-ohms = <3000>;
-		wakeup-source;
+		interrupt-parent = <&gpio4>;
+		interrupts = <26 IRQ_TYPE_LEVEL_LOW>;
 	};
 
 	/* EEPROM */
@@ -177,7 +190,17 @@
 		pagesize = <32>;
 		vcc-supply = <&reg_vcc_1v8>;
 	};
+
+	/* EEPROM ID page */
+	eepromid@5c {
+		compatible = "atmel,24c32";
+		reg = <0x5c>;
+		pagesize = <32>;
+		size = <32>;
+		vcc-supply = <&reg_vcc_1v8>;
+	};
 };
+
 /* I2C1 */
 &lpi2c1 {
 	clock-frequency = <400000>;
