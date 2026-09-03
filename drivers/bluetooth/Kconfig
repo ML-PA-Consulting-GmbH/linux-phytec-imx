@@ -511,4 +511,18 @@ config BT_INTEL_PCIE
 
 	  Say Y here to compiler support for Intel Bluetooth PCIe device into
 	  the kernel or say M to compile it as module (btintel_pcie)
+
+config BT_ESP_HCI
+	tristate "ESP-Hosted HCI generic driver"
+	help
+	  Use an ESP32 device as HCI device. This is the transport-agnostic
+	  half of the driver. 
+
+config BT_ESP_HCI_SPI
+	tristate "ESP-Hosted HCI SPI transport driver"
+	depends on BT_ESP_HCI
+	depends on SPI
+	help
+	  Use an ESP32 device as HCI device using SPI.
+
 endmenu
