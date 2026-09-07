@@ -36,6 +36,9 @@ obj-$(CONFIG_BT_HCIUART_NOKIA)	+= hci_nokia.o
 
 obj-$(CONFIG_BT_HCIRSI)		+= btrsi.o
 
+obj-$(CONFIG_BT_ESP_HCI)	+= esp_hci.o
+obj-$(CONFIG_BT_ESP_HCI_SPI)	+= esp_spi.o
+
 btmrvl-y			:= btmrvl_main.o
 btmrvl-$(CONFIG_DEBUG_FS)	+= btmrvl_debugfs.o
 
