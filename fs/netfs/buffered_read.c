@@ -525,14 +525,14 @@ static int netfs_read_gaps(struct file *file, struct folio *folio)
 
 	netfs_read_to_pagecache(rreq);
 
-	if (sink)
-		folio_put(sink);
-
 	ret = netfs_wait_for_read(rreq);
 	if (ret == 0) {
 		flush_dcache_folio(folio);
 		folio_mark_uptodate(folio);
 	}
+
+	if (sink)
+		folio_put(sink);
 	folio_unlock(folio);
 	netfs_put_request(rreq, false, netfs_rreq_trace_put_return);
 	return ret < 0 ? ret : 0;
@@ -564,6 +564,8 @@ int netfs_read_folio(struct file *file, struct folio *folio)
 	struct netfs_io_request *rreq;
 	struct netfs_inode *ctx = netfs_inode(mapping->host);
 	int ret;
+
+	folio_wait_writeback(folio);
 
 	if (folio_test_dirty(folio)) {
 		trace_netfs_folio(folio, netfs_folio_trace_read_gaps);
