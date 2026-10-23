@@ -396,6 +396,8 @@ static bool reg_not_null(const struct bpf_reg_state *reg)
 	type = base_type(type);
 	return type == PTR_TO_SOCKET ||
 		type == PTR_TO_TCP_SOCK ||
+		type == PTR_TO_XDP_SOCK ||
+		type == PTR_TO_BUF ||
 		type == PTR_TO_MAP_VALUE ||
 		type == PTR_TO_MAP_KEY ||
 		type == PTR_TO_SOCK_COMMON ||
@@ -569,10 +571,15 @@ static bool helper_multiple_ref_obj_use(enum bpf_func_id func_id,
 	return ref_obj_uses > 1;
 }
 
+/*
+ * Matches BPF_PROBE_ATOMIC too: convert_ctx_accesses() rewrites arena
+ * atomics before opt_subreg_zext_lo32_rnd_hi32() runs.
+ */
 static bool is_cmpxchg_insn(const struct bpf_insn *insn)
 {
 	return BPF_CLASS(insn->code) == BPF_STX &&
-	       BPF_MODE(insn->code) == BPF_ATOMIC &&
+	       (BPF_MODE(insn->code) == BPF_ATOMIC ||
+		BPF_MODE(insn->code) == BPF_PROBE_ATOMIC) &&
 	       insn->imm == BPF_CMPXCHG;
 }
 
@@ -15625,7 +15632,6 @@ static int check_cond_jmp_op(struct bpf_verifier_env *env,
 	 */
 	if (!is_jmp32 && BPF_SRC(insn->code) == BPF_X &&
 	    __is_pointer_value(false, src_reg) && __is_pointer_value(false, dst_reg) &&
-	    type_may_be_null(src_reg->type) != type_may_be_null(dst_reg->type) &&
 	    base_type(src_reg->type) != PTR_TO_BTF_ID &&
 	    base_type(dst_reg->type) != PTR_TO_BTF_ID) {
 		eq_branch_regs = NULL;
@@ -15641,9 +15647,11 @@ static int check_cond_jmp_op(struct bpf_verifier_env *env,
 			break;
 		}
 		if (eq_branch_regs) {
-			if (type_may_be_null(src_reg->type))
+			/* src == dst && dst != NULL => src != NULL */
+			if (reg_not_null(dst_reg) && type_may_be_null(src_reg->type))
 				mark_ptr_not_null_reg(&eq_branch_regs[insn->src_reg]);
-			else
+			/* src == dst && src != NULL => dst != NULL */
+			if (reg_not_null(src_reg) && type_may_be_null(dst_reg->type))
 				mark_ptr_not_null_reg(&eq_branch_regs[insn->dst_reg]);
 		}
 	}
@@ -18706,20 +18714,30 @@ static int do_check(struct bpf_verifier_env *env)
 					return -EINVAL;
 				}
 process_bpf_exit_full:
-				if (env->cur_state->active_lock.ptr && !env->cur_state->curframe) {
-					verbose(env, "bpf_spin_unlock is missing\n");
+				if (env->cur_state->active_lock.ptr &&
+				    (exception_exit || !env->cur_state->curframe)) {
+					verbose(env, exception_exit ?
+						"bpf_throw cannot be used inside bpf_spin_lock-ed region\n" :
+						"bpf_spin_unlock is missing\n");
 					return -EINVAL;
 				}
 
-				if (env->cur_state->active_rcu_lock && !env->cur_state->curframe) {
-					verbose(env, "bpf_rcu_read_unlock is missing\n");
+				if (env->cur_state->active_rcu_lock &&
+				    (exception_exit || !env->cur_state->curframe)) {
+					verbose(env, exception_exit ?
+						"bpf_throw cannot be used inside bpf_rcu_read_lock-ed region\n" :
+						"bpf_rcu_read_unlock is missing\n");
 					return -EINVAL;
 				}
 
-				if (env->cur_state->active_preempt_lock && !env->cur_state->curframe) {
-					verbose(env, "%d bpf_preempt_enable%s missing\n",
-						env->cur_state->active_preempt_lock,
-						env->cur_state->active_preempt_lock == 1 ? " is" : "(s) are");
+				if (env->cur_state->active_preempt_lock &&
+				    (exception_exit || !env->cur_state->curframe)) {
+					if (exception_exit)
+						verbose(env, "bpf_throw cannot be used inside bpf_preempt_disable-ed region\n");
+					else
+						verbose(env, "%d bpf_preempt_enable%s missing\n",
+							env->cur_state->active_preempt_lock,
+							env->cur_state->active_preempt_lock == 1 ? " is" : "(s) are");
 					return -EINVAL;
 				}
 
